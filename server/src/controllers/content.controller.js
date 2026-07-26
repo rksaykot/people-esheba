@@ -124,11 +124,11 @@ exports.adminGetDoctors = async (req, res) => {
 };
 exports.adminCreateDoctor = async (req, res) => {
   try {
-    const { name, name_bn, specialty, specialty_bn, area, area_bn, district, division, phone, hours, rating, is_verified } = req.body;
+    const { name, name_bn, specialty, specialty_bn, area, area_bn, district, division, phone, hours, rating, is_verified, is_active } = req.body;
     if (!name || !specialty) return err(res, 'Name and specialty required', 400);
     const [r] = await db.execute(
-      'INSERT INTO doctors (name,name_bn,specialty,specialty_bn,area,area_bn,district,division,phone,hours,rating,is_verified,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      [name, name_bn||null, specialty, specialty_bn||null, area||null, area_bn||null, district||null, division||null, phone||null, hours||null, rating||0, is_verified?1:0, req.user.id]
+      'INSERT INTO doctors (name,name_bn,specialty,specialty_bn,area,area_bn,district,division,phone,hours,rating,is_verified,is_active,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [name, name_bn||null, specialty, specialty_bn||null, area||null, area_bn||null, district||null, division||null, phone||null, hours||null, rating||0, is_verified?1:0, is_active!==false?1:0, req.user.id]
     );
     const [[row]] = await db.execute('SELECT * FROM doctors WHERE id=?', [r.insertId]);
     ok(res, row, 'Created', 201);
@@ -161,10 +161,10 @@ exports.adminGetPharmacies = async (req, res) => {
 };
 exports.adminCreatePharmacy = async (req, res) => {
   try {
-    const { name, name_bn, area, area_bn, district, division, phone, hours, type, is_24h, is_verified } = req.body;
+    const { name, name_bn, area, area_bn, district, division, phone, hours, type, is_24h, is_verified, is_active } = req.body;
     if (!name) return err(res, 'Name required', 400);
-    const [r] = await db.execute('INSERT INTO pharmacies (name,name_bn,area,area_bn,district,division,phone,hours,type,is_24h,is_verified,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-      [name, name_bn||null, area||null, area_bn||null, district||null, division||null, phone||null, hours||null, type||'retail', is_24h?1:0, is_verified?1:0, req.user.id]);
+    const [r] = await db.execute('INSERT INTO pharmacies (name,name_bn,area,area_bn,district,division,phone,hours,type,is_24h,is_verified,is_active,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [name, name_bn||null, area||null, area_bn||null, district||null, division||null, phone||null, hours||null, type||'retail', is_24h?1:0, is_verified?1:0, is_active!==false?1:0, req.user.id]);
     const [[row]] = await db.execute('SELECT * FROM pharmacies WHERE id=?', [r.insertId]);
     ok(res, row, 'Created', 201);
   } catch { err(res, 'Failed', 500); }
@@ -234,10 +234,10 @@ exports.adminGetEducation = async (req, res) => {
 };
 exports.adminCreateEducation = async (req, res) => {
   try {
-    const { name, name_bn, type, subtype, district, division, address, address_bn, phone, website, description, description_bn, is_verified } = req.body;
+    const { name, name_bn, type, subtype, district, division, address, address_bn, phone, website, description, description_bn, is_verified, is_active } = req.body;
     if (!name) return err(res, 'Name required', 400);
-    const [r] = await db.execute('INSERT INTO education_institutions (name,name_bn,type,subtype,district,division,address,address_bn,phone,website,description,description_bn,is_verified,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      [name, name_bn||null, type||'school', subtype||'other', district||null, division||null, address||null, address_bn||null, phone||null, website||null, description||null, description_bn||null, is_verified?1:0, req.user.id]);
+    const [r] = await db.execute('INSERT INTO education_institutions (name,name_bn,type,subtype,district,division,address,address_bn,phone,website,description,description_bn,is_verified,is_active,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [name, name_bn||null, type||'school', subtype||'other', district||null, division||null, address||null, address_bn||null, phone||null, website||null, description||null, description_bn||null, is_verified?1:0, is_active!==false?1:0, req.user.id]);
     const [[row]] = await db.execute('SELECT * FROM education_institutions WHERE id=?', [r.insertId]);
     ok(res, row, 'Created', 201);
   } catch { err(res, 'Failed', 500); }

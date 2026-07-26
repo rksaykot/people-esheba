@@ -78,7 +78,7 @@ exports.adminCreate = async (req, res) => {
   try {
     const {
       category, subtype, name, name_bn, description, description_bn, area, area_bn, district, division,
-      address, address_bn, phone, website, rating, badge_key, price_info, features, is_verified,
+      address, address_bn, phone, website, rating, badge_key, price_info, features, is_verified, is_active
     } = req.body;
 
     if (!category || !assertCategory(category)) return err(res, 'Valid category is required', 400);
@@ -86,11 +86,11 @@ exports.adminCreate = async (req, res) => {
 
     const [r] = await db.execute(
       `INSERT INTO directory_listings
-       (category, subtype, name, name_bn, description, description_bn, area, area_bn, district, division, address, address_bn, phone, website, rating, badge_key, price_info, features, is_verified, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       (category, subtype, name, name_bn, description, description_bn, area, area_bn, district, division, address, address_bn, phone, website, rating, badge_key, price_info, features, is_verified, is_active, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [category, subtype || 'other', name, name_bn || null, description || null, description_bn || null, area || null, area_bn || null, district || null,
        division || null, address || null, address_bn || null, phone || null, website || null, rating || 0,
-       badge_key || null, price_info || null, features || null, is_verified ? 1 : 0, req.user.id]
+       badge_key || null, price_info || null, features || null, is_verified ? 1 : 0, is_active!==false ? 1 : 0, req.user.id]
     );
     const [[row]] = await db.execute('SELECT * FROM directory_listings WHERE id=?', [r.insertId]);
     ok(res, row, 'Listing created', 201);
