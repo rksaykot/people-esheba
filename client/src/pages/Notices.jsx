@@ -72,19 +72,21 @@ export default function Notices() {
   const isDark = theme === 'dark';
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [activeCat, setActiveCat] = useState(searchParams.get('cat') || 'all');
   const [visible, setVisible] = useState(false);
 
   useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
   useEffect(() => {
     setActiveCat(searchParams.get('cat') || 'all');
+    setSearch(searchParams.get('search') || '');
   }, [searchParams]);
 
   const handleCatChange = (key) => {
     const newParams = new URLSearchParams(searchParams);
     if (key === 'all') newParams.delete('cat');
     else newParams.set('cat', key);
+    // Optionally delete search when changing category, or keep it. We'll keep it.
     setSearchParams(newParams);
   };
 
@@ -279,7 +281,7 @@ export default function Notices() {
           </span>
           {(activeCat !== 'all' || search) && (
             <button
-              onClick={() => { setSearch(''); handleCatChange('all'); }}
+              onClick={() => { setSearch(''); handleCatChange('all'); setSearchParams(new URLSearchParams()); }}
               style={{
                 fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none',
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
@@ -318,7 +320,7 @@ export default function Notices() {
             <FiBell size={48} style={{ opacity: 0.4, color: 'var(--text-dim)' }} />
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>No updates found</div>
             <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>Try adjusting your search or filter.</div>
-            <button onClick={() => { setSearch(''); handleCatChange('all'); }} className="btn btn-outline btn-sm">
+            <button onClick={() => { setSearch(''); handleCatChange('all'); setSearchParams(new URLSearchParams()); }} className="btn btn-outline btn-sm">
               Reset Filters
             </button>
           </div>

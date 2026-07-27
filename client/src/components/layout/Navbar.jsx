@@ -323,19 +323,9 @@ export default function Navbar() {
           to: "/notices?cat=academic",
           sub: [
             {
-              label: t("notices.academic"),
-              to: "/notices?cat=school-college",
-              icon: <FiBook size={13} />,
-            },
-            {
               label: t("notices.admission"),
-              to: "/notices?cat=university",
+              to: "/notices?cat=academic&search=admission",
               icon: <FiAward size={13} />,
-            },
-            {
-              label: t("notices.admission"),
-              to: "/notices?cat=admission",
-              icon: <FiFileText size={13} />,
             },
           ],
         },
@@ -347,12 +337,12 @@ export default function Navbar() {
           sub: [
             {
               label: t("notices.job_circular"),
-              to: "/notices?cat=job-circular",
+              to: "/notices?cat=career&search=job",
               icon: <FiBriefcase size={13} />,
             },
             {
               label: t("notices.exam"),
-              to: "/notices?cat=exam",
+              to: "/notices?cat=career&search=exam",
               icon: <FiClock size={13} />,
             },
           ],
@@ -367,7 +357,7 @@ export default function Navbar() {
           key: "gazette",
           label: t("notices.gazette"),
           icon: <FiShield size={14} />,
-          to: "/notices?cat=gazette",
+          to: "/notices?cat=government",
         },
       ],
     },
