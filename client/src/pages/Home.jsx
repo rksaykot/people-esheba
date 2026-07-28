@@ -239,7 +239,7 @@ export default function Home() {
         />
 
         <div className="container max-w-6xl mx-auto relative z-10">
-          <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-8 md:gap-10 items-center">
+          <div className="grid lg:grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-8 md:gap-10 items-center">
             {/* Left content */}
             <div
               className={`transition-all duration-1000 ${
@@ -256,7 +256,7 @@ export default function Home() {
                 </span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black leading-[0.95] tracking-tight mb-6 md:mb-8">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black leading-[0.95] tracking-tight mb-6 md:mb-8">
                 {(isBn && cms.hero_title_bn) ? cms.hero_title_bn : (cms.hero_title || t('home.title'))}
                 <br />
                 <span className="text-red-500">{(isBn && cms.hero_highlight_bn) ? cms.hero_highlight_bn : (cms.hero_highlight || t('home.highlight'))}</span>

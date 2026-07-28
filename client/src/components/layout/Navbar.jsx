@@ -769,6 +769,7 @@ export default function Navbar() {
             <img
               src={isDark ? "/logo-dark.png" : "/Logo.png"}
               alt="People E-Sheba"
+              className="laptop-nav-logo"
               style={{ height: 38, width: "auto", objectFit: "contain" }}
             />
           </Link>
@@ -776,6 +777,7 @@ export default function Navbar() {
           {/* Desktop Nav */}
           <div
             id="mega-nav"
+            className="laptop-mega-nav"
             style={{
               display: "flex",
               alignItems: "center",
@@ -791,6 +793,7 @@ export default function Navbar() {
                 onMouseLeave={closeDrop}
               >
                 <button
+                  className="laptop-nav-btn"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (activeMenu === cat.key) {
@@ -853,6 +856,7 @@ export default function Navbar() {
             ))}
             <Link
               to="/contact"
+              className="laptop-nav-btn"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -897,6 +901,7 @@ export default function Navbar() {
 
           {/* Right Side */}
           <div
+            className="laptop-nav-right"
             style={{
               flex: 1,
               display: "flex",

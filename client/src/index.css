@@ -359,3 +359,28 @@ tbody tr:last-child td { border-bottom: none; }
     display:none !important;
   }
 }
+
+/* ── Laptop Nav Responsiveness ────────────────────────────── */
+@media (max-width: 1536px) {
+  .laptop-mega-nav {
+    gap: 0px !important;
+  }
+  .laptop-nav-btn {
+    padding: 6px 6px !important;
+    gap: 2px !important;
+    font-size: 0.72rem !important;
+  }
+  .laptop-nav-right {
+    gap: 4px !important;
+  }
+  .laptop-nav-logo {
+    height: 32px !important;
+  }
+}
+
+@media (max-width: 1366px) {
+  .laptop-nav-btn {
+    padding: 6px 4px !important;
+    font-size: 0.68rem !important;
+  }
+}
