@@ -319,6 +319,14 @@ tbody tr:last-child td { border-bottom: none; }
   transform: translateX(-50%) scale(1.5) !important;
 }
 
+@keyframes slideUpFade {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up-fade {
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .container { padding: 0 1.5rem; }

@@ -360,30 +360,70 @@ export default function Home() {
               </div>
 
               {/* Live Platform Pulse Feed */}
-              <div className="rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-6 relative overflow-hidden" style={heroPanelStyle}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs md:text-sm font-black uppercase tracking-wider" style={{ color: 'var(--text)' }}>
+              <div 
+                className="rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-6 relative overflow-hidden group" 
+                style={{
+                  ...heroPanelStyle,
+                  border: `1px solid ${pulses[pulseIndex].color}35`,
+                  boxShadow: `0 8px 32px -8px ${pulses[pulseIndex].color}25`,
+                  transition: 'all 0.8s ease'
+                }}
+              >
+                {/* Dynamic background glow */}
+                <div 
+                  className="absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-25 transition-colors duration-1000 pointer-events-none"
+                  style={{ background: pulses[pulseIndex].color }}
+                />
+
+                <div className="flex items-center justify-between mb-5 relative z-10">
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: pulses[pulseIndex].color }} />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: pulses[pulseIndex].color }} />
+                    </div>
+                    <span 
+                      className="text-xs md:text-sm font-black uppercase tracking-widest text-transparent bg-clip-text transition-all duration-700" 
+                      style={{ backgroundImage: `linear-gradient(90deg, var(--text) 0%, ${pulses[pulseIndex].color} 180%)` }}
+                    >
                       {isBn ? 'সরাসরি প্ল্যাটফর্ম আপডেট' : 'Live Platform Pulse'}
                     </span>
                   </div>
-                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  <span 
+                    className="text-[10px] uppercase font-black px-2.5 py-1 rounded-full border shadow-sm transition-colors duration-500"
+                    style={{ 
+                      background: `${pulses[pulseIndex].color}15`, 
+                      color: pulses[pulseIndex].color, 
+                      borderColor: `${pulses[pulseIndex].color}30`,
+                    }}
+                  >
                     {isBn ? 'সক্রিয়' : 'Active'}
                   </span>
                 </div>
 
-                <div className="min-h-[72px] flex items-center gap-4 rounded-2xl p-4 transition-all duration-500" 
-                     style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                       style={{ background: `${pulses[pulseIndex].color}12`, border: `1px solid ${pulses[pulseIndex].color}24` }}>
+                <div 
+                  key={pulseIndex}
+                  className="animate-slide-up-fade min-h-[76px] flex items-center gap-4 rounded-2xl p-4 relative z-10" 
+                  style={{ 
+                    background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.5)', 
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid var(--border)',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}
+                >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 shadow-inner transition-colors duration-500"
+                       style={{ 
+                         background: `linear-gradient(135deg, ${pulses[pulseIndex].color}20, ${pulses[pulseIndex].color}05)`, 
+                         border: `1px solid ${pulses[pulseIndex].color}40`,
+                         boxShadow: `0 4px 12px -2px ${pulses[pulseIndex].color}30`
+                       }}>
                     {pulses[pulseIndex].icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs md:text-sm font-bold leading-snug" style={{ color: 'var(--text)' }}>
+                    <div className="text-sm md:text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
                       {isBn ? pulses[pulseIndex].textBn : pulses[pulseIndex].textEn}
                     </div>
-                    <div className="text-[10px] mt-1 font-semibold" style={{ color: 'var(--text-dim)' }}>
+                    <div className="text-[11px] mt-1.5 font-bold uppercase tracking-wide transition-colors duration-500" style={{ color: pulses[pulseIndex].color }}>
                       {isBn ? pulses[pulseIndex].timeBn : pulses[pulseIndex].timeEn}
                     </div>
                   </div>
