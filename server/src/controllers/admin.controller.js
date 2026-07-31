@@ -54,12 +54,13 @@ exports.getDashboard = async (req, res) => {
 /* ── GET /admin/users ─────────────────────────────────────── */
 exports.getUsers = async (req, res) => {
   try {
-    const { search, role, status, page = 1, limit = 20 } = req.query;
+    const { search, role, status, district, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let   where  = ['1=1'];
     const params = [];
 
     if (search) { where.push('(name LIKE ? OR email LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
+    if (district) { where.push('district LIKE ?'); params.push(`%${district}%`); }
     if (role)   { where.push('role = ?');   params.push(role); }
     if (status === 'active')   where.push('is_active = 1');
     if (status === 'blocked')  where.push('is_active = 0');
@@ -104,11 +105,13 @@ exports.deleteUser = async (req, res) => {
 /* ── Donations management ─────────────────────────────────── */
 exports.getDonations = async (req, res) => {
   try {
-    const { status, page = 1, limit = 15 } = req.query;
+    const { status, search, district, page = 1, limit = 15 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let   where  = ['1=1'];
     const params = [];
     if (status) { where.push('d.status = ?'); params.push(status); }
+    if (search) { where.push('(d.title LIKE ? OR u.name LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
+    if (district) { where.push('d.district LIKE ?'); params.push(`%${district}%`); }
     const [rows] = await db.execute(
       `SELECT d.*, u.name AS poster_name, u.email AS poster_email
        FROM donations d JOIN users u ON d.user_id=u.id
@@ -138,11 +141,13 @@ exports.deleteDonation = async (req, res) => {
 /* ── Jobs management ──────────────────────────────────────── */
 exports.getAllJobs = async (req, res) => {
   try {
-    const { page = 1, limit = 15, status } = req.query;
+    const { page = 1, limit = 15, status, search, district } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let where = ['1=1'];
     const params = [];
     if (status) { where.push('j.status = ?'); params.push(status); }
+    if (search) { where.push('(j.title LIKE ? OR j.company LIKE ? OR u.name LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (district) { where.push('j.district LIKE ?'); params.push(`%${district}%`); }
     const cond = where.join(' AND ');
     const [rows] = await db.execute(
       `SELECT j.*, u.name AS poster_name,
@@ -270,8 +275,23 @@ exports.getVolunteers = async (req, res) => {
 
 /* ── Emergency services management ───────────────────────── */
 exports.getEmergencyServices = async (req, res) => {
-  const [rows] = await db.execute('SELECT * FROM emergency_services ORDER BY created_at DESC');
-  ok(res, rows);
+  try {
+    const { search, district, page = 1, limit = 20 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    let where = ['1=1'];
+    const params = [];
+    
+    if (search) { where.push('(name LIKE ? OR phone LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
+    if (district) { where.push('district LIKE ?'); params.push(`%${district}%`); }
+    
+    const cond = where.join(' AND ');
+    const [rows] = await db.execute(
+      `SELECT * FROM emergency_services WHERE ${cond} ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`,
+      params
+    );
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM emergency_services WHERE ${cond}`, params);
+    ok(res, { rows, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+  } catch { err(res, 'Failed', 500); }
 };
 
 exports.createEmergencyService = async (req, res) => {
@@ -339,11 +359,13 @@ exports.approveBloodDonor = async (req, res) => {
 /* ── Admin blood donors list with status filter ───────────── */
 exports.getBloodDonorsAdmin = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status } = req.query;
+    const { page = 1, limit = 20, status, search, district } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let where = ['1=1'];
     const params = [];
     if (status) { where.push("COALESCE(b.status,'approved') = ?"); params.push(status); }
+    if (search) { where.push('(u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (district) { where.push('b.district LIKE ?'); params.push(`%${district}%`); }
     const cond = where.join(' AND ');
     const [rows] = await db.execute(
       `SELECT b.*, u.name, u.email, u.phone, u.is_verified
@@ -376,12 +398,14 @@ exports.approveVolunteer = async (req, res) => {
 /* ── Volunteers admin list with pending support ───────────── */
 exports.getVolunteersAdmin = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status } = req.query;
+    const { page = 1, limit = 20, status, search, district } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let where = ['1=1'];
     const params = [];
     if (status === 'pending')  { where.push('v.is_active = 0'); }
     else if (status === 'active')   { where.push('v.is_active = 1'); }
+    if (search) { where.push('(u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (district) { where.push('v.district LIKE ?'); params.push(`%${district}%`); }
     const cond = where.join(' AND ');
     const [rows] = await db.execute(
       `SELECT v.*, u.name, u.email, u.phone

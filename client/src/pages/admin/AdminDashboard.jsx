@@ -56,7 +56,7 @@ export default function AdminDashboard() {
     <div>
       <div style={{ marginBottom:'1.75rem' }}>
         <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'var(--text-strong)', marginBottom:4 }}>{t('admin.dashboard')} {isBn?'সারসংক্ষেপ':'Overview'}</h1>
-        <p style={{ color:'var(--text-muted)', fontSize:'0.87rem' }}>{isBn?'প্ল্যাটফর্মের সামগ্রিক অবস্থা':'Platform summary at a glance'}</p>
+
       </div>
 
       {/* Pending approvals banner */}
@@ -79,7 +79,6 @@ export default function AdminDashboard() {
         <StatCard icon={<FiHeart/>} label={t('admin.totalDonations')} value={s.pending_donations?.toLocaleString()} color="#E63946" to="/admin/donations" sub={s.pending_donations>0? (isBn ? 'রিভিউ প্রয়োজন' : 'Review needed') : undefined}/>
         <StatCard icon={<FiVol/>} label={t('admin.totalVolunteers')} value={s.active_volunteers?.toLocaleString()} color="#8B5CF6" to="/admin/volunteers" sub={s.pending_volunteers>0 ? `${s.pending_volunteers} pending` : undefined}/>
         <StatCard icon={<FiDroplet/>} label="Blood Donors" value={s.available_donors?.toLocaleString()} color="#E63946" to="/admin/blood" sub={s.pending_blood>0 ? `${s.pending_blood} pending` : undefined}/>
-        <StatCard icon={<FiDollarSign/>} label="Total Donated" value={Number(s.total_donated||0).toLocaleString()} color="#F59E0B"/>
         <StatCard icon={<FiAlertTriangle/>} label="Emergency Services" value={s.emergency_services?.toLocaleString()} color="#E63946" to="/admin/emergency"/>
         <StatCard icon={<FiClock/>} label="Pending Reports" value={s.pending_reports?.toLocaleString()} color="#F59E0B" to="/admin/reports"/>
       </div>

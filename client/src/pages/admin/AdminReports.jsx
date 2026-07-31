@@ -30,7 +30,7 @@ export default function AdminReports() {
           <h1 style={{ display:'flex', alignItems:'center', gap:10, fontWeight:800, fontSize:'1.6rem', color:'var(--text-strong)', marginBottom:4 }}>
             <FiFlag style={{ color:'var(--amber)' }}/> {t('admin.reports')}
           </h1>
-          <p style={{ color:'var(--text-muted)', fontSize:'0.88rem' }}>{items.filter(r=>r.status==='pending').length} {isBn?'অপেক্ষমান রিপোর্ট':'pending reports to review'}</p>
+
         </div>
       </div>
       <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, overflow:'hidden' }}>

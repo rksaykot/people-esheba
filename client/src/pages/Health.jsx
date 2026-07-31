@@ -10,6 +10,8 @@ import {
 } from 'react-icons/fi';
 import { MdLocalHospital, MdMedicalServices, MdLocalPharmacy } from 'react-icons/md';
 import DetailsModal from '../components/ui/DetailsModal';
+import DistrictDropdown from '../components/ui/DistrictDropdown';
+import SortDropdown from '../components/ui/SortDropdown';
 import { useApi } from '../hooks/useApi';
 
 /* ── Constants ──────────────────────────────────────────── */
@@ -71,12 +73,10 @@ export default function Health() {
   const [typeFilter, setTypeFilter] = useState(searchParams.get('type') || '');
   const [visible, setVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
-  useEffect(() => {
-    setTypeFilter(searchParams.get('type') || '');
-  }, [searchParams]);
-
+  
   const handleTypeChange = (key) => {
     const newParams = new URLSearchParams(searchParams);
     if (!key) newParams.delete('type');
@@ -85,7 +85,15 @@ export default function Health() {
   };
 
   /* Real data from the admin-managed directory (category = hospital) */
-  const { data, loading } = useApi('/directory', { params: { category: 'hospital' } });
+  const { data, loading } = useApi('/directory', { 
+    params: { 
+      category: 'hospital',
+      ...(typeFilter && { subtype: typeFilter }),
+      ...(search && { search }),
+      ...(searchParams.get('district') && { district: searchParams.get('district') }),
+      ...(searchParams.get('sort') && { sort: searchParams.get('sort') })
+    } 
+  });
   const hospitals = (data?.rows || []).map(mapListing);
 
   const filtered = hospitals.filter(item => {
@@ -231,6 +239,11 @@ export default function Health() {
             </button>
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <DistrictDropdown />
+            <SortDropdown />
+          </div>
+
           {/* Type filters */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginRight: 4 }}>
@@ -280,9 +293,9 @@ export default function Health() {
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {t("health.found") || "hospitals found"}</>}
           </span>
-          {(typeFilter || search) && (
+          {(typeFilter || search || searchParams.get('district')) && (
             <button
-              onClick={() => { setSearch(''); handleTypeChange(''); }}
+              onClick={() => { setSearch(''); handleTypeChange(''); setSearchParams({}); }}
               style={{
                 fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none',
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
@@ -321,7 +334,7 @@ export default function Health() {
             <FiFilter size={48} style={{ opacity: 0.4, color: 'var(--text-dim)' }} />
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>{t("health.no_results") || "No hospitals found"}</div>
             <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>{t("health.no_results_sub") || "Try adjusting your search or filter."}</div>
-            <button onClick={() => { setSearch(''); handleTypeChange(''); }} className="btn btn-outline btn-sm">
+            <button onClick={() => { setSearch(''); handleTypeChange(''); setSearchParams({}); }} className="btn btn-outline btn-sm">
               {t("health.reset") || "Reset Filters"}
             </button>
           </div>

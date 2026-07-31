@@ -149,11 +149,7 @@ export default function Navbar() {
       color: "#E63946",
       label: t("nav.emergency"),
       items: [
-        {
-          icon: <FiPlusSquare size={15} />,
-          label: t("emergency.hospital"),
-          to: "/emergency?type=hospital",
-        },
+
         {
           icon: <FiShield size={15} />,
           label: t("emergency.police"),
@@ -253,12 +249,12 @@ export default function Navbar() {
         {
           icon: <FiAward size={15} />,
           label: t("education.public_uni"),
-          to: "/education/university",
+          to: "/education/university?type=public",
         },
         {
           icon: <FiAward size={15} />,
           label: t("education.private_uni"),
-          to: "/education/university",
+          to: "/education/university?type=private",
         },
         {
           icon: <FiAward size={15} />,

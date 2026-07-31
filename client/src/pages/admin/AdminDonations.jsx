@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useLang } from '../../context/LanguageContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { FiCheck, FiX, FiTrash2, FiEye, FiFilter, FiTrendingUp, FiHeart, FiClock, FiSearch } from 'react-icons/fi';
+import { FiCheck, FiX, FiTrash2, FiEye, FiFilter, FiTrendingUp, FiHeart, FiClock, FiSearch, FiZap } from 'react-icons/fi';
 import { MdOutlineMedicalServices, MdOutlineSchool, MdOutlineAgriculture } from 'react-icons/md';
+import { BD_DISTRICTS } from '../../utils/helpers';
+import DetailsModal from '../../components/ui/DetailsModal';
 
 export default function AdminDonations() {
   const { t, isBn } = useLang();
@@ -13,17 +15,22 @@ export default function AdminDonations() {
   const [page, setPage]     = useState(1);
   const [pages, setPages]   = useState(1);
   const [statusF, setStatusF] = useState('pending');
+  const [search, setSearch] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deletingBulk, setDeletingBulk] = useState(false);
+  const [viewItem, setViewItem] = useState(null);
 
   const fetch = async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams({ page, limit:15, ...(statusF&&statusF!=='all'&&{status:statusF}) });
+      const q = new URLSearchParams({ page, limit:15, ...(statusF&&statusF!=='all'&&{status:statusF}), ...(search && { search }), ...(districtFilter && { district: districtFilter }) });
       const { data } = await api.get(`/admin/donations?${q}`);
       setItems(data.data.rows); setTotal(data.data.total); setPages(data.data.pages);
     } catch { setItems([]); } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetch(); }, [page, statusF]); // eslint-disable-line
+  useEffect(() => { fetch(); }, [page, statusF, districtFilter]); // eslint-disable-line
 
   const updateStatus = async (id, status) => {
     try {
@@ -33,14 +40,38 @@ export default function AdminDonations() {
     } catch { toast.error('Failed'); }
   };
 
-  const deleteItem = async (id) => {
+  const deleteItem = async (id, e) => {
+    if (e) e.stopPropagation();
     if (!window.confirm('Delete this donation request?')) return;
     try {
       await api.delete(`/admin/donations/${id}`);
       toast.success('Deleted');
       setItems(i => i.filter(x => x.id!==id));
       setTotal(t => t-1);
+      setSelectedIds(s => { const next = new Set(s); next.delete(id); return next; });
     } catch { toast.error('Failed'); }
+  };
+
+  const toggleSelect = (id, e) => {
+    if (e) e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+  const toggleSelectAll = () => {
+    if (selectedIds.size === items.length && items.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map(i => i.id)));
+  };
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedIds.size} donations?`)) return;
+    setDeletingBulk(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => api.delete(`/admin/donations/${id}`)));
+      toast.success(`Deleted ${selectedIds.size} donations`);
+      setSelectedIds(new Set());
+      fetch();
+    } catch { toast.error('Failed to delete some donations'); fetch(); }
+    finally { setDeletingBulk(false); }
   };
 
   const S_COLOR = { pending:'badge-amber', approved:'badge-green', rejected:'badge-red', completed:'badge-cyan' };
@@ -52,7 +83,26 @@ export default function AdminDonations() {
           <h1 style={{ display:'flex', alignItems:'center', gap:10, fontWeight:800, fontSize:'1.6rem', color:'var(--text-strong)', marginBottom:4 }}>
             <FiHeart style={{ color:'#EF4444' }}/> {t('admin.donations')}
           </h1>
-          <p style={{ color:'var(--text-muted)', fontSize:'0.88rem' }}>{total} {isBn?'মোট সাহায্যের অনুরোধ':'total help requests'}</p>
+
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
+          <form onSubmit={e => { e.preventDefault(); setPage(1); fetch(); }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative' }}>
+              <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} size={14} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={isBn?'খুঁজুন...':'Search...'} className="form-input" style={{ paddingLeft: 36, height: 40, borderRadius: 10, fontSize: '0.85rem', width: 220 }}/>
+            </div>
+            <select value={districtFilter} onChange={e => { setDistrictFilter(e.target.value); setPage(1); }} className="form-input" style={{ height: 40, borderRadius: 10, fontSize: '0.85rem', width: 150 }}>
+              <option value="">{isBn ? 'সব জেলা' : 'All Districts'}</option>
+              {BD_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <button type="submit" className="btn btn-primary" style={{ height: 40, padding: '0 15px' }}>{t('common.search')}</button>
+          </form>
+          {selectedIds.size > 0 && (
+            <button onClick={handleBulkDelete} className="btn btn-outline" style={{ height: 40, borderRadius: 10, borderColor:'var(--red)', color:'var(--red)' }} disabled={deletingBulk}>
+              {deletingBulk ? <div className="spinner spinner-sm" style={{ borderTopColor:'var(--red)' }}/> : <FiTrash2 size={13}/>} 
+              {isBn ? `নির্বাচিত মুছুন (${selectedIds.size})` : `Delete (${selectedIds.size})`}
+            </button>
+          )}
         </div>
         <div style={{ display:'flex', gap:6, background:'var(--surface)', padding:4, borderRadius:12, border:'1px solid var(--border)' }}>
           {['all','pending','approved','rejected','completed'].map(s => (
@@ -76,6 +126,7 @@ export default function AdminDonations() {
           <div className="table-wrap">
             <table>
               <thead><tr>
+                <th style={{ width: 40 }}><input type="checkbox" checked={selectedIds.size === items.length && items.length > 0} onChange={toggleSelectAll} style={{ accentColor:'var(--red)' }} /></th>
                 <th>{isBn?'শিরোনাম':'Title'}</th>
                 <th>{isBn?'পোস্টকারী':'Posted By'}</th>
                 <th>{isBn?'বিভাগ':'Category'}</th>
@@ -87,10 +138,11 @@ export default function AdminDonations() {
               </tr></thead>
               <tbody>
                 {items.map(d => (
-                  <tr key={d.id}>
+                  <tr key={d.id} onClick={() => setViewItem(d)} style={{ cursor: 'pointer' }}>
+                    <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.has(d.id)} onChange={(e) => toggleSelect(d.id, e)} style={{ accentColor:'var(--red)' }} /></td>
                     <td style={{ maxWidth:180 }}>
                       <div style={{ fontWeight:600, color:'var(--text-strong)', fontSize:'0.85rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.title}</div>
-                      {d.is_urgent && <span className="badge badge-red" style={{ fontSize:'0.65rem', marginTop:3 }}>⚡ URGENT</span>}
+                      {d.is_urgent && <span className="badge badge-red" style={{ fontSize:'0.65rem', marginTop:3, display:'flex', alignItems:'center', gap:3 }}><FiZap size={10} fill="currentColor" /> URGENT</span>}
                     </td>
                     <td style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>
                       <div>{d.poster_name}</div>
@@ -140,7 +192,7 @@ export default function AdminDonations() {
                             <FiCheck size={14}/> DONE
                           </button>
                         )}
-                        <button onClick={()=>deleteItem(d.id)} title="Delete Permanently" 
+                        <button onClick={(e)=>deleteItem(d.id, e)} title="Delete Permanently" 
                           style={{ 
                             width:34, height:34, borderRadius:10, border:'1px solid var(--border)', 
                             background:'var(--surface-2)', color:'var(--text-dim)', 
@@ -170,6 +222,7 @@ export default function AdminDonations() {
           <button className="page-btn" onClick={()=>setPage(p=>p+1)} disabled={page===pages}>›</button>
         </div>
       )}
+      {viewItem && <DetailsModal item={viewItem} onClose={() => setViewItem(null)} />}
     </div>
   );
 }

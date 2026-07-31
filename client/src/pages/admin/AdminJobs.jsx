@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { useLang } from '../../context/LanguageContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { FiTrash2, FiEye, FiUsers, FiBriefcase, FiPlus, FiEdit2, FiX, FiSave, FiSearch, FiUploadCloud, FiCheck, FiClock } from 'react-icons/fi';
+import { FiTrash2, FiEye, FiUsers, FiBriefcase, FiPlus, FiEdit2, FiX, FiSave, FiSearch, FiUploadCloud, FiCheck, FiClock, FiPhone, FiExternalLink, FiMail } from 'react-icons/fi';
 import BulkImportModal from '../../components/admin/BulkImportModal';
+import { BD_DISTRICTS } from '../../utils/helpers';
+import DetailsModal from '../../components/ui/DetailsModal';
 
 const JOB_TYPES = ['full-time', 'part-time', 'freelance', 'internship', 'remote', 'govt', 'other'];
 const DIVS = ['Dhaka', 'Chittagong', 'Rajshahi', 'Khulna', 'Barisal', 'Sylhet', 'Rangpur', 'Mymensingh'];
@@ -21,10 +23,12 @@ const STATUS_TABS = [
 export default function AdminJobs() {
   const { t, isBn } = useLang();
   const [search, setSearch] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [viewItem, setViewItem] = useState(null);
   const [form, setForm] = useState(BLANK);
   const [saving, setSaving] = useState(false);
   const [items, setItems] = useState([]);
@@ -33,6 +37,8 @@ export default function AdminJobs() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [pendingCount, setPendingCount] = useState(0);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   // Applicants modal state
   const [showApplicants, setShowApplicants] = useState(false);
@@ -60,7 +66,7 @@ export default function AdminJobs() {
   const fetchJobs = async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams({ page, limit: 15, ...(search && { search }), ...(statusFilter && { status: statusFilter }) });
+      const q = new URLSearchParams({ page, limit: 15, ...(search && { search }), ...(statusFilter && { status: statusFilter }), ...(districtFilter && { district: districtFilter }) });
       const { data } = await api.get(`/admin/jobs?${q}`);
       setItems(data.data.rows); setTotal(data.data.total); setPages(data.data.pages);
     } catch { setItems([]); } finally { setLoading(false); }
@@ -74,7 +80,7 @@ export default function AdminJobs() {
     } catch {}
   };
 
-  useEffect(() => { fetchJobs(); }, [page, statusFilter]); // eslint-disable-line
+  useEffect(() => { fetchJobs(); }, [page, statusFilter, districtFilter]); // eslint-disable-line
   useEffect(() => { fetchPendingCount(); }, []); // eslint-disable-line
 
   const openAdd  = () => { setForm(BLANK); setEditing(null); setShowForm(true); };
@@ -105,14 +111,38 @@ export default function AdminJobs() {
     finally { setSaving(false); }
   };
 
-  const deleteJob = async (id, title) => {
+  const deleteJob = async (id, title, e) => {
+    if (e) e.stopPropagation();
     if (!window.confirm(`Delete "${title}"?`)) return;
     try {
       await api.delete(`/admin/jobs/${id}`);
       toast.success('Job deleted');
       setItems(i => i.filter(x => x.id !== id));
       setTotal(t => t - 1);
+      setSelectedIds(s => { const next = new Set(s); next.delete(id); return next; });
     } catch { toast.error('Failed'); }
+  };
+
+  const toggleSelect = (id, e) => {
+    if (e) e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+  const toggleSelectAll = () => {
+    if (selectedIds.size === items.length && items.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map(i => i.id)));
+  };
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedIds.size} jobs?`)) return;
+    setDeletingBulk(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => api.delete(`/admin/jobs/${id}`)));
+      toast.success(`Deleted ${selectedIds.size} jobs`);
+      setSelectedIds(new Set());
+      fetchJobs();
+    } catch { toast.error('Failed to delete some jobs'); fetchJobs(); }
+    finally { setDeletingBulk(false); }
   };
 
   const updateJobStatus = async (id, status) => {
@@ -142,36 +172,47 @@ export default function AdminJobs() {
               </span>
             )}
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>{total} {isBn ? 'মোট চাকরি' : 'total job listings'}</p>
+
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <form onSubmit={e => { e.preventDefault(); setPage(1); fetchJobs(); }} style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+          <form onSubmit={e => { e.preventDefault(); setPage(1); fetchJobs(); }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative' }}>
               <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} size={14} />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={isBn ? 'পদ বা কোম্পানি...' : 'Search jobs...'} className="form-input" style={{ paddingLeft: 36, height: 40, borderRadius: 10, fontSize: '0.85rem' }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={isBn ? 'পদ বা কোম্পানি...' : 'Search jobs...'} className="form-input" style={{ paddingLeft: 36, height: 40, borderRadius: 10, fontSize: '0.85rem', width: 220 }} />
             </div>
+            <select value={districtFilter} onChange={e => { setDistrictFilter(e.target.value); setPage(1); }} className="form-input" style={{ height: 40, borderRadius: 10, fontSize: '0.85rem', width: 150 }}>
+              <option value="">{isBn ? 'সব জেলা' : 'All Districts'}</option>
+              {BD_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
             <button type="submit" className="btn btn-primary" style={{ height: 40, padding: '0 15px' }}>{t('common.search')}</button>
           </form>
-          <button onClick={() => setShowImport(true)} className="btn btn-ghost" style={{ height: 40, border: '1px solid var(--border)', borderRadius: 10 }}><FiUploadCloud size={14} /> {isBn ? 'ইমপোর্ট' : 'Import'}</button>
-          <button onClick={openAdd} className="btn btn-primary" style={{ height: 40, borderRadius: 10 }}><FiPlus size={14} /> {isBn ? 'নতুন চাকরি' : 'Post Job'}</button>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            {selectedIds.size > 0 && (
+              <button onClick={handleBulkDelete} className="btn btn-outline" style={{ height: 40, borderRadius: 10, borderColor:'var(--red)', color:'var(--red)' }} disabled={deletingBulk}>
+                {deletingBulk ? <div className="spinner spinner-sm" style={{ borderTopColor:'var(--red)' }}/> : <FiTrash2 size={13}/>} 
+                {isBn ? `নির্বাচিত মুছুন (${selectedIds.size})` : `Delete (${selectedIds.size})`}
+              </button>
+            )}
+            <button onClick={() => setShowImport(true)} className="btn btn-ghost" style={{ height: 40, border: '1px solid var(--border)', borderRadius: 10 }}><FiUploadCloud size={14} /> {isBn ? 'ইমপোর্ট' : 'Import'}</button>
+            <button onClick={openAdd} className="btn btn-primary" style={{ height: 40, borderRadius: 10 }}><FiPlus size={14} /> {isBn ? 'নতুন চাকরি' : 'Post Job'}</button>
+          </div>
         </div>
-      </div>
-
-      {/* Status filter tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: '1.25rem', background: 'var(--surface)', padding: 4, borderRadius: 12, border: '1px solid var(--border)', width: 'fit-content' }}>
-        {STATUS_TABS.map(tab => (
-          <button key={tab.key} onClick={() => { setStatusFilter(tab.key); setPage(1); }}
-            style={{
-              padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: '0.78rem', fontWeight: 700,
-              cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 5,
-              background: statusFilter === tab.key ? (tab.key === 'pending' ? '#F59E0B' : 'var(--primary)') : 'transparent',
-              color: statusFilter === tab.key ? '#fff' : 'var(--text-muted)'
-            }}>
-            {tab.key === 'pending' && <FiClock size={11} />}
-            {isBn ? tab.labelBn : tab.label}
-            {tab.key === 'pending' && pendingCount > 0 && <span style={{ background: 'rgba(0,0,0,0.25)', borderRadius: 10, padding: '1px 6px', fontSize: '0.7rem' }}>{pendingCount}</span>}
-          </button>
-        ))}
+        {/* Status filter tabs */}
+        <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: 4, borderRadius: 12, border: '1px solid var(--border)', width: 'fit-content' }}>
+          {STATUS_TABS.map(tab => (
+            <button key={tab.key} onClick={() => { setStatusFilter(tab.key); setPage(1); }}
+              style={{
+                padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: '0.78rem', fontWeight: 700,
+                cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 5,
+                background: statusFilter === tab.key ? (tab.key === 'pending' ? '#F59E0B' : 'var(--primary)') : 'transparent',
+                color: statusFilter === tab.key ? '#fff' : 'var(--text-muted)'
+              }}>
+              {tab.key === 'pending' && <FiClock size={11} />}
+              {isBn ? tab.labelBn : tab.label}
+              {tab.key === 'pending' && pendingCount > 0 && <span style={{ background: 'rgba(0,0,0,0.25)', borderRadius: 10, padding: '1px 6px', fontSize: '0.7rem' }}>{pendingCount}</span>}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
@@ -181,6 +222,7 @@ export default function AdminJobs() {
           <div className="table-wrap">
             <table>
               <thead><tr>
+                <th style={{ width: 40 }}><input type="checkbox" checked={selectedIds.size === items.length && items.length > 0} onChange={toggleSelectAll} style={{ accentColor:'var(--red)' }} /></th>
                 <th>{isBn ? 'পদ' : 'Position'}</th>
                 <th>{isBn ? 'প্রতিষ্ঠান' : 'Company'}</th>
                 <th>{isBn ? 'ধরন' : 'Type'}</th>
@@ -189,11 +231,12 @@ export default function AdminJobs() {
                 <th>{isBn ? 'দেখেছেন' : 'Views'}</th>
                 <th>{isBn ? 'স্ট্যাটাস' : 'Status'}</th>
                 <th>{isBn ? 'তারিখ' : 'Date'}</th>
-                <th>{isBn ? 'কার্যক্রম' : 'Actions'}</th>
+                <th style={{ textAlign:'right' }}>{isBn ? 'কার্যক্রম' : 'Actions'}</th>
               </tr></thead>
               <tbody>
                 {items.map(j => (
-                  <tr key={j.id} style={{ background: j.status === 'pending' ? 'rgba(245,158,11,0.04)' : 'transparent' }}>
+                  <tr key={j.id} onClick={() => setViewItem(j)} style={{ cursor:'pointer', background: j.status === 'pending' ? 'rgba(245,158,11,0.04)' : 'transparent' }}>
+                    <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.has(j.id)} onChange={(e) => toggleSelect(j.id, e)} style={{ accentColor:'var(--red)' }} /></td>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--text-strong)', fontSize: '0.85rem' }}>{j.title}</div>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: 1 }}>by {j.poster_name}</div>
@@ -201,7 +244,7 @@ export default function AdminJobs() {
                     <td style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>{j.company}</td>
                     <td><span className="badge" style={{ background: `${TYPE_COLOR[j.type] || 'var(--green)'}18`, color: TYPE_COLOR[j.type] || 'var(--green)' }}>{j.type}</span></td>
                     <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{j.district || '—'}</td>
-                    <td style={{ cursor: 'pointer' }} onClick={() => openApplicants(j.id, j.title)}>
+                    <td onClick={(e) => { e.stopPropagation(); openApplicants(j.id, j.title); }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.83rem', color: 'var(--cyan)' }}>
                         <FiUsers size={12} />{j.applicants || 0}
                       </span>
@@ -209,36 +252,36 @@ export default function AdminJobs() {
                     <td style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>{j.views}</td>
                     <td><span className={`badge ${STATUS_COLOR[j.status] || 'badge-gray'}`}>{j.status}</span></td>
                     <td style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>{new Date(j.created_at).toLocaleDateString()}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                    <td style={{ textAlign:'right' }}>
+                      <div style={{ display: 'inline-flex', gap: 6 }}>
                         {/* Approve / Reject for pending jobs */}
                         {j.status === 'pending' && (<>
-                          <button onClick={() => updateJobStatus(j.id, 'active')} title={isBn ? 'অনুমোদন করুন' : 'Approve'}
+                          <button onClick={(e) => { e.stopPropagation(); updateJobStatus(j.id, 'active'); }} title={isBn ? 'অনুমোদন করুন' : 'Approve'}
                             style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface-2)', color: '#10B981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
                             onMouseEnter={e => e.currentTarget.style.borderColor = '#10B981'}
                             onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
                             <FiCheck size={14} />
                           </button>
-                          <button onClick={() => updateJobStatus(j.id, 'closed')} title={isBn ? 'বাতিল করুন' : 'Reject'}
+                          <button onClick={(e) => { e.stopPropagation(); updateJobStatus(j.id, 'closed'); }} title={isBn ? 'বাতিল করুন' : 'Reject'}
                             style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface-2)', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
                             onMouseEnter={e => e.currentTarget.style.borderColor = '#EF4444'}
                             onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
                             <FiX size={14} />
                           </button>
                         </>)}
-                        <Link to={`/jobs/${j.id}`} target="_blank"
+                        <Link to={`/jobs/${j.id}`} target="_blank" onClick={(e) => e.stopPropagation()}
                           style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
                           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--cyan)'}
                           onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
                           <FiEye size={14} />
                         </Link>
-                        <button onClick={() => openEdit(j)}
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(j); }}
                           style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
                           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'}
                           onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
                           <FiEdit2 size={14} />
                         </button>
-                        <button onClick={() => deleteJob(j.id, j.title)}
+                        <button onClick={(e) => { deleteJob(j.id, j.title, e); }}
                           style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface-2)', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
                           onMouseEnter={e => e.currentTarget.style.borderColor = '#EF4444'}
                           onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
@@ -248,7 +291,7 @@ export default function AdminJobs() {
                     </td>
                   </tr>
                 ))}
-                {items.length === 0 && <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-dim)' }}>{t('common.noResults')}</td></tr>}
+                {items.length === 0 && <tr><td colSpan={10} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-dim)' }}>{t('common.noResults')}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -350,8 +393,8 @@ export default function AdminJobs() {
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{new Date(app.created_at).toLocaleDateString()}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                      <span>✉️ {app.email}</span>
-                      {app.phone && <span>📞 {app.phone}</span>}
+                      <span style={{display:'flex', alignItems:'center', gap:4}}><FiMail size={12}/> {app.email}</span>
+                      {app.phone && <span style={{display:'flex', alignItems:'center', gap:4}}><FiPhone size={12}/> {app.phone}</span>}
                     </div>
                     <div style={{ background: 'var(--surface)', padding: '1rem', borderRadius: 10, fontSize: '0.85rem', color: 'var(--text-muted)', whiteSpace: 'pre-wrap', border: '1px solid var(--border)' }}>
                       <strong style={{ color: 'var(--text)', display: 'block', marginBottom: 4 }}>{isBn ? 'কভার লেটার:' : 'Cover Letter:'}</strong>

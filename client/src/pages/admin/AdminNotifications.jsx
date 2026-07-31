@@ -28,7 +28,7 @@ export default function AdminNotifications() {
     <div>
       <div style={{ marginBottom:'1.75rem' }}>
         <h1 style={{ fontWeight:800, fontSize:'1.4rem', color:'var(--text-strong)', marginBottom:3 }}>{t('admin.notifications')}</h1>
-        <p style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>{isBn?'সব ব্যবহারকারীকে ঘোষণা পাঠান':'Send announcements to all users'}</p>
+
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 340px', gap:'1.5rem', alignItems:'start' }}>

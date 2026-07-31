@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useLang } from '../../context/LanguageContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { FiTrash2, FiShield, FiCheckCircle, FiCheck, FiX, FiClock, FiUsers, FiUploadCloud } from 'react-icons/fi';
+import { FiTrash2, FiShield, FiCheckCircle, FiCheck, FiX, FiClock, FiUsers, FiUploadCloud, FiSearch } from 'react-icons/fi';
 import BulkImportModal from '../../components/admin/BulkImportModal';
+import { BD_DISTRICTS } from '../../utils/helpers';
 
 const STATUS_TABS = [
   { key: '', label: 'All', labelBn: 'সব' },
@@ -19,13 +20,17 @@ export default function AdminVolunteers() {
   const [page, setPage]       = useState(1);
   const [pages, setPages]     = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
   const [pendingCount, setPendingCount] = useState(0);
   const [showImport, setShowImport] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   const fetchVolunteers = async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams({ page, limit: 20, ...(statusFilter && { status: statusFilter }) });
+      const q = new URLSearchParams({ page, limit: 20, ...(statusFilter && { status: statusFilter }), ...(search && { search }), ...(districtFilter && { district: districtFilter }) });
       const r = await api.get(`/admin/volunteers?${q}`);
       setItems(r.data.data.rows); setTotal(r.data.data.total); setPages(r.data.data.pages);
     } catch { setItems([]); }
@@ -39,7 +44,7 @@ export default function AdminVolunteers() {
     } catch {}
   };
 
-  useEffect(() => { fetchVolunteers(); }, [page, statusFilter]); // eslint-disable-line
+  useEffect(() => { fetchVolunteers(); }, [page, statusFilter, districtFilter]); // eslint-disable-line
   useEffect(() => { fetchPendingCount(); }, []); // eslint-disable-line
 
   const approveVolunteer = async (id, status, name) => {
@@ -62,14 +67,38 @@ export default function AdminVolunteers() {
     } catch { toast.error('Failed'); }
   };
 
-  const deleteItem = async (id, name) => {
+  const deleteItem = async (id, name, e) => {
+    if (e) e.stopPropagation();
     if (!window.confirm(`Remove ${name} as volunteer?`)) return;
     try {
       await api.delete(`/admin/volunteers/${id}`);
       toast.success('Removed');
       setItems(i => i.filter(x => x.id !== id));
       setTotal(t => t - 1);
+      setSelectedIds(s => { const next = new Set(s); next.delete(id); return next; });
     } catch { toast.error('Failed'); }
+  };
+
+  const toggleSelect = (id, e) => {
+    if (e) e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+  const toggleSelectAll = () => {
+    if (selectedIds.size === items.length && items.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map(i => i.id)));
+  };
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedIds.size} volunteers?`)) return;
+    setDeletingBulk(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => api.delete(`/admin/volunteers/${id}`)));
+      toast.success(`Deleted ${selectedIds.size} volunteers`);
+      setSelectedIds(new Set());
+      fetchVolunteers();
+    } catch { toast.error('Failed to delete some volunteers'); fetchVolunteers(); }
+    finally { setDeletingBulk(false); }
   };
 
   return (
@@ -84,14 +113,35 @@ export default function AdminVolunteers() {
               </span>
             )}
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{total} {isBn ? 'নিবন্ধিত স্বেচ্ছাসেবক' : 'registered volunteers'}</p>
+
         </div>
-        <button onClick={() => setShowImport(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 10, color: 'var(--cyan)', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
-          <FiUploadCloud size={15} /> {isBn ? 'ডেটা আমদানি' : 'Import CSV/Excel'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+          <form onSubmit={e => { e.preventDefault(); setPage(1); fetchVolunteers(); }} style={{ display: 'flex', gap: 5 }}>
+            <div style={{ position: 'relative' }}>
+              <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} size={14} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={isBn?'খুঁজুন...':'Search name...'} className="form-input" style={{ paddingLeft: 36, height: 40, borderRadius: 10, fontSize: '0.85rem', width: 220 }}/>
+            </div>
+            <select value={districtFilter} onChange={e => { setDistrictFilter(e.target.value); setPage(1); }} className="form-input" style={{ height: 40, borderRadius: 10, fontSize: '0.85rem', width: 150 }}>
+              <option value="">{isBn ? 'সব জেলা' : 'All Districts'}</option>
+              {BD_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <button type="submit" className="btn btn-primary" style={{ height: 40, padding: '0 15px' }}>{t('common.search')}</button>
+          </form>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            {selectedIds.size > 0 && (
+              <button onClick={handleBulkDelete} className="btn btn-outline" style={{ height: 40, borderRadius: 10, borderColor:'var(--red)', color:'var(--red)' }} disabled={deletingBulk}>
+                {deletingBulk ? <div className="spinner spinner-sm" style={{ borderTopColor:'var(--red)' }}/> : <FiTrash2 size={13}/>} 
+                {isBn ? `নির্বাচিত মুছুন (${selectedIds.size})` : `Delete (${selectedIds.size})`}
+              </button>
+            )}
+            <button onClick={() => setShowImport(true)} className="btn btn-ghost" style={{ height: 40, borderRadius: 10, border: '1px solid var(--border)' }}>
+              <FiUploadCloud size={14} /> {isBn ? 'ডেটা আমদানি' : 'Import'}
+            </button>
+          </div>
+        </div>
 
         {/* Status filter tabs */}
-        <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: 4, borderRadius: 12, border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: 4, borderRadius: 12, border: '1px solid var(--border)', width: 'fit-content' }}>
           {STATUS_TABS.map(tab => (
             <button key={tab.key} onClick={() => { setStatusFilter(tab.key); setPage(1); }}
               style={{
@@ -115,6 +165,7 @@ export default function AdminVolunteers() {
           <div className="table-wrap">
             <table>
               <thead><tr>
+                <th style={{ width: 40 }}><input type="checkbox" checked={selectedIds.size === items.length && items.length > 0} onChange={toggleSelectAll} style={{ accentColor:'var(--red)' }} /></th>
                 <th>{isBn ? 'স্বেচ্ছাসেবক' : 'Volunteer'}</th>
                 <th>{isBn ? 'বিভাগ' : 'Category'}</th>
                 <th>{isBn ? 'দক্ষতা' : 'Skills'}</th>
@@ -127,7 +178,8 @@ export default function AdminVolunteers() {
                 {items.map(v => {
                   const isPending = !v.is_active;
                   return (
-                    <tr key={v.id} style={{ background: isPending ? 'rgba(245,158,11,0.04)' : 'transparent' }}>
+                    <tr key={v.id} style={{ background: isPending ? 'rgba(245,158,11,0.04)' : 'transparent', cursor: 'pointer' }}>
+                      <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.has(v.id)} onChange={(e) => toggleSelect(v.id, e)} style={{ accentColor:'var(--red)' }} /></td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                           <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--grad-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-strong)' }}>
@@ -169,7 +221,7 @@ export default function AdminVolunteers() {
                               <FiShield size={12} />
                             </button>
                           ) : null}
-                          <button onClick={() => deleteItem(v.id, v.name)} title="Remove"
+                          <button onClick={(e) => deleteItem(v.id, v.name, e)} title="Remove"
                             style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(230,57,70,0.2)', background: 'transparent', color: 'var(--red)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <FiTrash2 size={12} />
                           </button>

@@ -4,10 +4,12 @@ import { useLang } from '../../context/LanguageContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import {
-  FiPlus, FiTrash2, FiEdit2, FiX, FiSave, FiPhone, FiSearch, FiStar, FiUploadCloud,
+  FiPlus, FiTrash2, FiEdit2, FiX, FiSearch, FiStar, FiUploadCloud, FiSave
 } from 'react-icons/fi';
-import { MdLocalHospital, MdMiscellaneousServices, MdAccountBalance, MdAttachMoney } from 'react-icons/md';
+import { MdLocalHospital, MdMiscellaneousServices, MdAccountBalance } from 'react-icons/md';
 import BulkImportModal from '../../components/admin/BulkImportModal';
+import { BD_DISTRICTS } from '../../utils/helpers';
+import DetailsModal from '../../components/ui/DetailsModal';
 
 /* Every public "static" page that used to hardcode sample data now
  * reads from directory_listings via /directory?category=X. This one
@@ -19,14 +21,15 @@ const CATEGORIES = [
   { key: 'government', label: 'Government', icon: <MdAccountBalance/>,          subtypes: ['nid', 'schemes', 'passport', 'land', 'utility'] },
 ];
 
-const DIVS  = ['Dhaka','Chittagong','Rajshahi','Khulna','Barisal','Sylhet','Rangpur','Mymensingh'];
+const DIVS = ['Dhaka', 'Chittagong', 'Rajshahi', 'Khulna', 'Barisal', 'Sylhet', 'Rangpur', 'Mymensingh'];
+
 const BLANK = (category, subtype) => ({
   category, subtype, name: '', name_bn: '', description: '', description_bn: '', area: '', area_bn: '', district: '', division: '',
   address: '', address_bn: '', phone: '', website: '', rating: 0, badge_key: '', price_info: '', features: '', is_verified: false,
 });
 
 export default function AdminDirectory({ fixedCategory }) {
-  const { isBn } = useLang();
+  const { isBn, t } = useLang();
   const [searchParams, setSearchParams] = useSearchParams();
   // When fixedCategory is provided (dedicated page), lock to it and hide the tab switcher.
   const activeCat = fixedCategory
@@ -35,22 +38,30 @@ export default function AdminDirectory({ fixedCategory }) {
 
   const [items, setItems]     = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
   const [search, setSearch]   = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editing, setEditing]   = useState(null);
+  const [viewItem, setViewItem] = useState(null);
   const [form, setForm]         = useState(BLANK(activeCat.key, activeCat.subtypes[0]));
   const [saving, setSaving]     = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/admin/directory', { params: { category: activeCat.key, search: search || undefined } });
-      setItems(data.data.rows || []);
+      const q = new URLSearchParams({ page, limit: 40, category: fixedCategory || activeCat.key });
+      if (search) q.append('search', search);
+      if (districtFilter) q.append('district', districtFilter);
+      const res = await api.get(`/admin/directory?${q}`);
+      setItems(res.data.data.rows || []);
     } catch { setItems([]); } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [activeCat.key]);
+  useEffect(() => { load(); }, [activeCat.key, page, districtFilter]);
 
   const switchCat = (key) => {
     const p = new URLSearchParams(searchParams);
@@ -83,93 +94,149 @@ export default function AdminDirectory({ fixedCategory }) {
     } finally { setSaving(false); }
   };
 
-  const remove = async (id, name) => {
+  const remove = async (id, name, e) => {
+    if (e) e.stopPropagation();
     if (!window.confirm(`Delete "${name}"?`)) return;
     try {
       await api.delete(`/admin/directory/${id}`);
       toast.success('Deleted');
       setItems(list => list.filter(x => x.id !== id));
+      setSelectedIds(s => { const next = new Set(s); next.delete(id); return next; });
     } catch { toast.error('Delete failed'); }
+  };
+
+  const toggleSelect = (id, e) => {
+    if (e) e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === items.length && items.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map(i => i.id)));
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedIds.size} items?`)) return;
+    setDeletingBulk(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => api.delete(`/admin/directory/${id}`)));
+      toast.success(`Deleted ${selectedIds.size} items`);
+      setSelectedIds(new Set());
+      load();
+    } catch { toast.error('Failed to delete some items'); load(); }
+    finally { setDeletingBulk(false); }
   };
 
   const submitSearch = (e) => { e.preventDefault(); load(); };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h1 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--text-strong)', marginBottom: 4 }}>
+          <h1 style={{ fontWeight: 800, fontSize: '1.4rem', color: '#fff', marginBottom: 3, display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ color:'var(--primary)' }}>{activeCat.icon}</span>
             {fixedCategory
               ? `${activeCat.label} ${isBn ? 'ব্যবস্থাপনা' : 'Manager'}`
               : (isBn ? 'ডিরেক্টরি ব্যবস্থাপনা' : 'Directory Manager')}
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-            {fixedCategory
-              ? (isBn ? `${activeCat.label} পেজে যা দেখানো হবে তা এখান থেকে নিয়ন্ত্রণ করুন` : `Controls what shows on the ${activeCat.label} page`)
-              : (isBn ? 'হাসপাতাল, সেবা, সরকারি ও অন্যান্য তালিকা এখান থেকে নিয়ন্ত্রণ করুন' : 'Controls what shows on Health, Services, and Government pages')}
-          </p>
+
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={openAdd} className="btn btn-primary" style={{ height: 42, borderRadius: 10 }}>
-            <FiPlus size={16}/> {isBn ? 'নতুন যোগ করুন' : 'Add Listing'}
-          </button>
-          <button onClick={() => setShowImport(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 10, color: 'var(--cyan)', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', height: 42 }}>
-            <FiUploadCloud size={15} /> {isBn ? 'ডেটা আমদানি' : 'Import CSV/Excel'}
-          </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+          {!fixedCategory && (
+            <div style={{ display: 'flex', gap: 5 }}>
+              {CATEGORIES.filter(c => c.key !== 'hospital').map(c => (
+                <button
+                  key={c.key}
+                  onClick={() => switchCat(c.key)}
+                  className={`btn btn-sm ${activeCat.key === c.key ? 'btn-primary' : 'btn-ghost'}`}
+                >
+                  <span style={{display:'flex',alignItems:'center',gap:4}}>{c.icon} {c.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <form onSubmit={submitSearch} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative' }}>
+              <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} size={14} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name..." className="form-input" style={{ paddingLeft: 36, height: 40, borderRadius: 10, fontSize: '0.85rem', width: 220 }}/>
+            </div>
+            <select value={districtFilter} onChange={e => { setDistrictFilter(e.target.value); setPage(1); }} className="form-input" style={{ height: 40, borderRadius: 10, fontSize: '0.85rem', width: 150 }}>
+              <option value="">{isBn ? 'সব জেলা' : 'All Districts'}</option>
+              {BD_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <button type="submit" className="btn btn-primary" style={{ height: 40, padding: '0 15px' }}>{t('common.search')}</button>
+          </form>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            {selectedIds.size > 0 && (
+              <button onClick={handleBulkDelete} className="btn btn-outline" style={{ height:40, borderRadius:10, borderColor:'var(--red)', color:'var(--red)' }} disabled={deletingBulk}>
+                {deletingBulk ? <div className="spinner spinner-sm" style={{ borderTopColor:'var(--red)' }}/> : <FiTrash2 size={13}/>} 
+                {isBn ? `নির্বাচিত মুছুন (${selectedIds.size})` : `Delete (${selectedIds.size})`}
+              </button>
+            )}
+            <button onClick={() => setShowImport(true)} className="btn btn-ghost" style={{ height: 40, borderRadius: 10, border:'1px solid var(--border)' }}>
+              <FiUploadCloud size={13} /> {isBn ? 'ইমপোর্ট' : 'Import'}
+            </button>
+            <button onClick={openAdd} className="btn btn-primary" style={{ height: 40, borderRadius: 10 }}>
+              <FiPlus size={13}/> {isBn ? 'নতুন যোগ করুন' : 'Add Listing'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Category tabs (hidden on dedicated per-category pages) */}
-      {!fixedCategory && (
-      <div style={{ display: 'flex', gap: 8, marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {CATEGORIES.map(c => (
-          <button
-            key={c.key}
-            onClick={() => switchCat(c.key)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 10,
-              border: '1px solid', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
-              background: activeCat.key === c.key ? 'var(--primary)' : 'transparent',
-              borderColor: activeCat.key === c.key ? 'var(--primary)' : 'var(--border)',
-              color: activeCat.key === c.key ? '#fff' : 'var(--text-muted)',
-            }}
-          >
-            {c.icon} {c.label}
-          </button>
-        ))}
-      </div>
-      )}
-
-      <form onSubmit={submitSearch} style={{ display: 'flex', gap: 8, marginBottom: '1.25rem', maxWidth: 360 }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name..." className="form-input" style={{ height: 40 }}/>
-        <button className="btn btn-ghost" style={{ height: 40 }}><FiSearch size={14}/></button>
-      </form>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: '1rem' }}>
-        {loading ? (
-          <div style={{ gridColumn: '1/-1', display: 'flex', justifyContent: 'center', padding: '3rem' }}><div className="spinner"/></div>
-        ) : items.map(item => (
-          <div key={item.id} className="card card-pad" style={{ borderLeft: `3px solid ${item.is_verified ? 'var(--green)' : 'var(--border)'}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-              <span className="badge" style={{ fontSize: '0.65rem' }}>{item.subtype}</span>
-              {item.is_verified && <span className="badge badge-green" style={{ fontSize: '0.65rem' }}>✓ Verified</span>}
-            </div>
-            <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.9rem', marginBottom: 4 }}>{item.name}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>{item.area || item.district || '—'}</div>
-            {item.phone && <div style={{ fontSize: '0.8rem', color: 'var(--cyan)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}><FiPhone size={11}/>{item.phone}</div>}
-            {!!item.rating && <div style={{ fontSize: '0.78rem', color: 'var(--amber)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: '0.9rem' }}><FiStar size={11}/>{item.rating}/5</div>}
-            <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
-              <button onClick={() => openEdit(item)} className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }}><FiEdit2 size={12}/>Edit</button>
-              <button onClick={() => remove(item.id, item.name)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(230,57,70,0.2)', background: 'transparent', color: 'var(--red)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FiTrash2 size={12}/></button>
-            </div>
-          </div>
-        ))}
-        {!loading && items.length === 0 && (
-          <div style={{ gridColumn: '1/-1', padding: '4rem', background: 'var(--surface)', borderRadius: 20, border: '1px solid var(--border)', textAlign: 'center' }}>
-            {activeCat.icon}
-            <div style={{ color: 'var(--text-muted)', marginTop: 12 }}>No {activeCat.label.toLowerCase()} listed yet. Click "Add Listing" to create the first one.</div>
-          </div>
-        )}
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: 40 }}><input type="checkbox" checked={selectedIds.size === items.length && items.length > 0} onChange={toggleSelectAll} style={{ accentColor:'var(--red)' }} /></th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th>Phone</th>
+              <th>Status</th>
+              <th style={{ textAlign:'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="7" style={{ textAlign:'center', padding:'3rem' }}><div className="spinner" style={{ margin:'0 auto' }}/></td></tr>
+            ) : items.length === 0 ? (
+              <tr><td colSpan="7" style={{ textAlign:'center', padding:'3rem', color:'var(--text-muted)' }}>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                  {activeCat.icon}
+                  <div>No {activeCat.label.toLowerCase()} listed yet. Click "Add Listing" to create the first one.</div>
+                </div>
+              </td></tr>
+            ) : items.map(item => (
+              <tr key={item.id} onClick={() => setViewItem(item)} style={{ cursor:'pointer' }}>
+                <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.has(item.id)} onChange={(e) => toggleSelect(item.id, e)} style={{ accentColor:'var(--red)' }} /></td>
+                <td>
+                  <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{item.name}</div>
+                  {item.rating > 0 && <div style={{ fontSize: '0.78rem', color: 'var(--amber)', display: 'flex', alignItems: 'center', gap: 4 }}><FiStar size={11}/>{item.rating}/5</div>}
+                </td>
+                <td>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.8rem', color:'var(--text-muted)' }}>
+                    <span className="badge" style={{ fontSize:'0.65rem' }}>{item.subtype}</span>
+                  </div>
+                </td>
+                <td style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>{item.area || item.district || '—'}</td>
+                <td style={{ fontSize:'0.85rem', color:'var(--text)' }}>{item.phone || '—'}</td>
+                <td>
+                  <div style={{ display:'flex', gap:4 }}>
+                    {item.is_verified && <span className="badge badge-green" style={{ fontSize:'0.6rem' }}>✓ Verified</span>}
+                  </div>
+                </td>
+                <td style={{ textAlign:'right' }}>
+                  <div style={{ display:'inline-flex', gap:6 }}>
+                    <button onClick={(e)=>{ e.stopPropagation(); openEdit(item); }} className="btn btn-ghost btn-sm" style={{ padding:'0.3rem 0.6rem' }}><FiEdit2 size={13}/></button>
+                    <button onClick={(e)=>{ remove(item.id, item.name, e); }} className="btn btn-outline btn-sm" style={{ padding:'0.3rem 0.6rem' }}><FiTrash2 size={13}/></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {showForm && (
@@ -272,7 +339,8 @@ export default function AdminDirectory({ fixedCategory }) {
           </div>
         </div>
       )}
-      <BulkImportModal isOpen={showImport} onClose={() => setShowImport(false)} table="directory_listings" defaultValues={{ category: activeCat.key }} onImportSuccess={() => { load(); }} />
+      <BulkImportModal isOpen={showImport} onClose={() => setShowImport(false)} table="directory_listings" onImportSuccess={() => { load(); }} />
+      {viewItem && <DetailsModal item={viewItem} onClose={() => setViewItem(null)} />}
     </div>
   );
 }

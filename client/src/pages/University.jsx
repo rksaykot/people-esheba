@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import { MdAccountBalance, MdBusiness, MdScience, MdEngineering, MdLocalHospital } from 'react-icons/md';
 import SortDropdown from '../components/ui/SortDropdown';
+import DistrictDropdown from '../components/ui/DistrictDropdown';
 import DetailsModal from '../components/ui/DetailsModal';
 import { useApi } from '../hooks/useApi';
 
@@ -63,11 +64,19 @@ function Counter({ end, suffix = '' }) {
 export default function University() {
   const { t, isBn } = useLang();
   const { theme } = useTheme();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [visible, setVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  
   const typeFilter = searchParams.get('type') || '';
+  
+  const setTypeFilter = (val) => {
+    if (val) searchParams.set('type', val);
+    else searchParams.delete('type');
+    setSearchParams(searchParams);
+  };
+
   const isDark = theme === 'dark';
 
   useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
@@ -85,6 +94,7 @@ export default function University() {
       type: 'university', 
       subtype: typeFilter || undefined, 
       search: search || undefined,
+      district: searchParams.get('district') || undefined,
       sort: searchParams.get('sort') || undefined
     } 
   });
@@ -243,9 +253,10 @@ export default function University() {
             {loading ? (t('common.loading') || 'Loading...') : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {isBn ? 'টি বিশ্ববিদ্যালয় পাওয়া গেছে' : 'universities found'}</>}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <DistrictDropdown />
             <SortDropdown />
-          {(typeFilter || search) && (
-            <button onClick={() => { setSearch(''); setTypeFilter(''); }} style={{ fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {(typeFilter || search || searchParams.get('district')) && (
+            <button onClick={() => { setSearch(''); setTypeFilter(''); setSearchParams({}); }} style={{ fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
               {isBn ? 'ফিল্টার মুছুন' : 'Clear all'} ×
             </button>
           )}
@@ -268,9 +279,9 @@ export default function University() {
         ) : filtered.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 2rem', gap: '1rem', textAlign: 'center' }}>
             <FiFilter size={48} style={{ opacity: 0.4, color: 'var(--text-dim)' }} />
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>{isBn ? 'কোনো বিশ্ববিদ্যালয় পাওয়া যায়নি' : 'No universities found'}</div>
-            <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>{isBn ? 'অনুসন্ধান বা ফিল্টার পরিবর্তন করুন।' : 'Try adjusting your search or filter.'}</div>
-            <button onClick={() => { setSearch(''); setTypeFilter(''); }} className="btn btn-outline btn-sm">{isBn ? 'রিসেট করুন' : 'Reset Filters'}</button>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>{isBn ? 'কোন বিশ্ববিদ্যালয় পাওয়া যায়নি' : 'No universities found'}</div>
+            <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>{isBn ? 'অনুগ্রহ করে অন্য কিছু দিয়ে খুঁজুন।' : 'Try adjusting your search or filter.'}</div>
+            <button onClick={() => { setSearch(''); setTypeFilter(''); setSearchParams({}); }} className="btn btn-outline btn-sm">{isBn ? 'রিসেট করুন' : 'Reset Filters'}</button>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>

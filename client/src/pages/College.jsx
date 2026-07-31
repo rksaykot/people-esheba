@@ -7,10 +7,9 @@ import {
   FiShield, FiAward, FiClock, FiNavigation, FiChevronRight,
   FiZap, FiCopy, FiCheckCircle, FiHeart, FiSmile, FiGlobe
 } from 'react-icons/fi';
-import {
-  MdSchool, MdBusiness, MdHealthAndSafety, MdScience, MdEngineering, MdAccountBalance
-} from 'react-icons/md';
+import { MdAccountBalance, MdBusiness, MdSchool, MdEngineering, MdScience } from 'react-icons/md';
 import SortDropdown from '../components/ui/SortDropdown';
+import DistrictDropdown from '../components/ui/DistrictDropdown';
 import DetailsModal from '../components/ui/DetailsModal';
 import { useApi } from '../hooks/useApi';
 
@@ -91,6 +90,7 @@ export default function College() {
       type: 'college', 
       subtype: typeFilter || undefined, 
       search: search || undefined,
+      district: searchParams.get('district') || undefined,
       sort: searchParams.get('sort') || undefined
     } 
   });
@@ -301,10 +301,11 @@ export default function College() {
             {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {t("education.found_colleges") || "colleges found"}</>}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <DistrictDropdown />
             <SortDropdown />
-          {(typeFilter || search) && (
+          {(typeFilter || search || searchParams.get('district')) && (
             <button
-              onClick={() => { setSearch(''); setTypeFilter(''); }}
+              onClick={() => { setSearch(''); setTypeFilter(''); setSearchParams({}); }}
               style={{
                 fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none',
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,

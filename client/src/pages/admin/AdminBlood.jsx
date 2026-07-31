@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useLang } from '../../context/LanguageContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { FiTrash2, FiShield, FiCheckCircle, FiX, FiCheck, FiClock, FiDroplet, FiUploadCloud } from 'react-icons/fi';
+import { FiTrash2, FiShield, FiCheckCircle, FiX, FiCheck, FiClock, FiDroplet, FiUploadCloud, FiSearch } from 'react-icons/fi';
 import BulkImportModal from '../../components/admin/BulkImportModal';
+import { BD_DISTRICTS } from '../../utils/helpers';
+import DetailsModal from '../../components/ui/DetailsModal';
 
 const STATUS_TABS = [
   { key: '', label: 'All', labelBn: 'সব' },
@@ -20,13 +22,18 @@ export default function AdminBlood() {
   const [page, setPage]       = useState(1);
   const [pages, setPages]     = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
   const [pendingCount, setPendingCount] = useState(0);
   const [showImport, setShowImport] = useState(false);
+  const [viewItem, setViewItem] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   const fetchDonors = async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams({ page, limit: 20, ...(statusFilter && { status: statusFilter }) });
+      const q = new URLSearchParams({ page, limit: 20, ...(statusFilter && { status: statusFilter }), ...(search && { search }), ...(districtFilter && { district: districtFilter }) });
       const r = await api.get(`/admin/blood-donors?${q}`);
       setItems(r.data.data.rows); setTotal(r.data.data.total); setPages(r.data.data.pages);
     } catch { setItems([]); }
@@ -40,7 +47,7 @@ export default function AdminBlood() {
     } catch {}
   };
 
-  useEffect(() => { fetchDonors(); }, [page, statusFilter]); // eslint-disable-line
+  useEffect(() => { fetchDonors(); }, [page, statusFilter, districtFilter]); // eslint-disable-line
   useEffect(() => { fetchPendingCount(); }, []); // eslint-disable-line
 
   const approveItem = async (id, status, name) => {
@@ -63,14 +70,38 @@ export default function AdminBlood() {
     } catch { toast.error('Failed'); }
   };
 
-  const deleteItem = async (id, name) => {
+  const deleteItem = async (id, name, e) => {
+    if (e) e.stopPropagation();
     if (!window.confirm(`Remove ${name} as blood donor?`)) return;
     try {
       await api.delete(`/admin/blood-donors/${id}`);
       toast.success('Removed');
       setItems(i => i.filter(x => x.id !== id));
       setTotal(t => t - 1);
+      setSelectedIds(s => { const next = new Set(s); next.delete(id); return next; });
     } catch { toast.error('Failed'); }
+  };
+
+  const toggleSelect = (id, e) => {
+    if (e) e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+  const toggleSelectAll = () => {
+    if (selectedIds.size === items.length && items.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map(i => i.id)));
+  };
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedIds.size} donors?`)) return;
+    setDeletingBulk(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => api.delete(`/admin/blood-donors/${id}`)));
+      toast.success(`Deleted ${selectedIds.size} donors`);
+      setSelectedIds(new Set());
+      fetchDonors();
+    } catch { toast.error('Failed to delete some donors'); fetchDonors(); }
+    finally { setDeletingBulk(false); }
   };
 
   const BLOOD_COLORS = { 'A+': '#EF4444', 'A-': '#DC2626', 'B+': '#3B82F6', 'B-': '#2563EB', 'AB+': '#8B5CF6', 'AB-': '#7C3AED', 'O+': '#10B981', 'O-': '#059669' };
@@ -87,14 +118,33 @@ export default function AdminBlood() {
               </span>
             )}
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{total} {isBn ? 'নিবন্ধিত রক্তদাতা' : 'registered blood donors'}</p>
+
         </div>
-        <button onClick={() => setShowImport(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 10, color: 'var(--cyan)', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
-          <FiUploadCloud size={15} /> {isBn ? 'ডেটা আমদানি' : 'Import CSV/Excel'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+          <form onSubmit={e => { e.preventDefault(); setPage(1); fetchDonors(); }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative' }}>
+              <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} size={14} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={isBn?'খুঁজুন...':'Search name...'} className="form-input" style={{ paddingLeft: 36, height: 40, borderRadius: 10, fontSize: '0.85rem', width: 220 }}/>
+            </div>
+            <select value={districtFilter} onChange={e => { setDistrictFilter(e.target.value); setPage(1); }} className="form-input" style={{ height: 40, borderRadius: 10, fontSize: '0.85rem', width: 150 }}>
+              <option value="">{isBn ? 'সব জেলা' : 'All Districts'}</option>
+              {BD_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <button type="submit" className="btn btn-primary" style={{ height: 40, padding: '0 15px' }}>{t('common.search')}</button>
+          </form>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            {selectedIds.size > 0 && (
+              <button onClick={handleBulkDelete} className="btn btn-outline" style={{ height: 40, borderRadius: 10, borderColor:'var(--red)', color:'var(--red)' }} disabled={deletingBulk}>
+                {deletingBulk ? <div className="spinner spinner-sm" style={{ borderTopColor:'var(--red)' }}/> : <FiTrash2 size={13}/>} 
+                {isBn ? `নির্বাচিত মুছুন (${selectedIds.size})` : `Delete (${selectedIds.size})`}
+              </button>
+            )}
+            <button onClick={() => setShowImport(true)} className="btn btn-ghost" style={{ height: 40, borderRadius: 10, border:'1px solid var(--border)' }}><FiUploadCloud size={13}/>{isBn ? 'ইমপোর্ট' : 'Import'}</button>
+          </div>
+        </div>
 
         {/* Status filter tabs */}
-        <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: 4, borderRadius: 12, border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: 4, borderRadius: 12, border: '1px solid var(--border)', width: 'fit-content' }}>
           {STATUS_TABS.map(tab => (
             <button key={tab.key} onClick={() => { setStatusFilter(tab.key); setPage(1); }}
               style={{
@@ -116,19 +166,21 @@ export default function AdminBlood() {
           <div className="table-wrap">
             <table>
               <thead><tr>
+                <th style={{ width: 40 }}><input type="checkbox" checked={selectedIds.size === items.length && items.length > 0} onChange={toggleSelectAll} style={{ accentColor:'var(--red)' }} /></th>
                 <th>{isBn ? 'দাতা' : 'Donor'}</th>
                 <th>{isBn ? 'রক্তের গ্রুপ' : 'Blood Group'}</th>
                 <th>{isBn ? 'এলাকা' : 'Location'}</th>
                 <th>{isBn ? 'যোগাযোগ' : 'Contact'}</th>
                 <th>{isBn ? 'প্রাপ্যতা' : 'Availability'}</th>
                 <th>{isBn ? 'স্ট্যাটাস' : 'Status'}</th>
-                <th>{isBn ? 'কার্যক্রম' : 'Actions'}</th>
+                <th style={{ textAlign:'right' }}>{isBn ? 'কার্যক্রম' : 'Actions'}</th>
               </tr></thead>
               <tbody>
                 {items.map(b => {
                   const statusVal = b.status || 'approved';
                   return (
-                    <tr key={b.id} style={{ background: statusVal === 'pending' ? 'rgba(245,158,11,0.04)' : 'transparent' }}>
+                    <tr key={b.id} onClick={() => setViewItem(b)} style={{ cursor:'pointer', background: statusVal === 'pending' ? 'rgba(245,158,11,0.04)' : 'transparent' }}>
+                      <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.has(b.id)} onChange={(e) => toggleSelect(b.id, e)} style={{ accentColor:'var(--red)' }} /></td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                           <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#EF4444' }}>
@@ -158,35 +210,45 @@ export default function AdminBlood() {
                           {isBn ? (statusVal === 'approved' ? 'অনুমোদিত' : statusVal === 'rejected' ? 'বাতিল' : 'অপেক্ষমান') : statusVal}
                         </span>
                       </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 5 }}>
-                          {/* Approve / Reject for pending */}
+                      <td style={{ textAlign:'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
                           {statusVal === 'pending' && (<>
-                            <button onClick={() => approveItem(b.id, 'approved', b.name)} title={isBn ? 'অনুমোদন' : 'Approve'}
-                              style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(16,185,129,0.3)', background: 'transparent', color: '#10B981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <FiCheck size={13} />
+                            <button onClick={(e) => { e.stopPropagation(); approveItem(b.id, 'approved', b.name); }} title={isBn ? 'অনুমোদন করুন' : 'Approve'}
+                              style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface-2)', color: '#10B981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                              onMouseEnter={e => e.currentTarget.style.borderColor = '#10B981'}
+                              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                              <FiCheck size={14} />
                             </button>
-                            <button onClick={() => approveItem(b.id, 'rejected', b.name)} title={isBn ? 'বাতিল' : 'Reject'}
-                              style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <FiX size={13} />
+                            <button onClick={(e) => { e.stopPropagation(); approveItem(b.id, 'rejected', b.name); }} title={isBn ? 'বাতিল করুন' : 'Reject'}
+                              style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface-2)', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                              onMouseEnter={e => e.currentTarget.style.borderColor = '#EF4444'}
+                              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                              <FiX size={14} />
                             </button>
                           </>)}
                           {!b.is_verified && statusVal === 'approved' && (
-                            <button onClick={() => verifyDonor(b.id, b.name)} title="Verify"
-                              style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(16,185,129,0.3)', background: 'transparent', color: 'var(--green)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <FiShield size={12} />
+                            <button onClick={(e) => { e.stopPropagation(); verifyDonor(b.id, b.name); }} title={isBn ? 'যাচাই করুন' : 'Verify Identity'}
+                              style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface-2)', color: '#3B82F6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                              onMouseEnter={e => e.currentTarget.style.borderColor = '#3B82F6'}
+                              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                              <FiShield size={14} />
                             </button>
                           )}
-                          <button onClick={() => deleteItem(b.id, b.name)} title="Remove"
-                            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(230,57,70,0.2)', background: 'transparent', color: 'var(--red)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <FiTrash2 size={12} />
+                          <button onClick={(e) => { deleteItem(b.id, b.name, e); }}
+                            style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface-2)', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                            onMouseEnter={e => e.currentTarget.style.borderColor = '#EF4444'}
+                            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                            <FiTrash2 size={14} />
                           </button>
                         </div>
                       </td>
                     </tr>
                   );
                 })}
-                {items.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-dim)' }}>{t('common.noResults')}</td></tr>}
+                {items.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-dim)' }}>
+                  <FiDroplet size={20} style={{ marginBottom: 10, opacity: 0.5, display: 'block', margin: '0 auto' }} />
+                  {isBn ? 'কোনো রক্তদাতা পাওয়া যায়নি' : 'No blood donors found'}
+                </td></tr>}
               </tbody>
             </table>
           </div>
@@ -202,6 +264,7 @@ export default function AdminBlood() {
         </div>
       )}
       <BulkImportModal isOpen={showImport} onClose={() => setShowImport(false)} table="blood_donors" onImportSuccess={() => { setPage(1); fetchDonors(); }} />
+      {viewItem && <DetailsModal item={viewItem} onClose={() => setViewItem(null)} />}
     </div>
   );
 }

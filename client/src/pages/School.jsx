@@ -9,6 +9,7 @@ import {
   FiZap, FiCopy, FiCheckCircle, FiHeart, FiSmile
 } from 'react-icons/fi';
 import SortDropdown from '../components/ui/SortDropdown';
+import DistrictDropdown from '../components/ui/DistrictDropdown';
 import DetailsModal from '../components/ui/DetailsModal';
 import { MdSchool, MdLocalLibrary, MdScience, MdEmojiObjects } from 'react-icons/md';
 import { useApi } from '../hooks/useApi';
@@ -91,6 +92,7 @@ export default function School() {
       type: 'school', 
       subtype: typeFilter || undefined, 
       search: search || undefined,
+      district: searchParams.get('district') || undefined,
       sort: searchParams.get('sort') || undefined
     } 
   });
@@ -286,10 +288,11 @@ export default function School() {
             {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {t("education.found") || "schools found"}</>}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <DistrictDropdown />
             <SortDropdown />
-          {(typeFilter || search) && (
+          {(typeFilter || search || searchParams.get('district')) && (
             <button
-              onClick={() => { setSearch(''); setTypeFilter(''); }}
+              onClick={() => { setSearch(''); setTypeFilter(''); setSearchParams({}); }}
               style={{
                 fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none',
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,

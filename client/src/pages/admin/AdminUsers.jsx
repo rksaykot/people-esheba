@@ -3,7 +3,8 @@ import { useLang } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { FiSearch, FiShield, FiTrash2, FiLock, FiUnlock, FiUser, FiUsers, FiMoreVertical, FiEdit2, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { FiSearch, FiShield, FiTrash2, FiLock, FiUnlock, FiUser, FiUsers, FiMoreVertical, FiEdit2, FiCheckCircle, FiXCircle, FiUploadCloud, FiPlus } from 'react-icons/fi';
+import { BD_DISTRICTS } from '../../utils/helpers';
 
 export default function AdminUsers() {
   const { t, isBn } = useLang();
@@ -15,21 +16,23 @@ export default function AdminUsers() {
   const [pages, setPages]   = useState(1);
   const [limit, setLimit]   = useState(20);
   const [search, setSearch] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
   const [roleF, setRoleF]   = useState('');
   const [statusF, setStatusF] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams({ page, limit, ...(search&&{search}), ...(roleF&&{role:roleF}), ...(statusF&&{status:statusF}) });
+      const q = new URLSearchParams({ page, limit, ...(search&&{search}), ...(roleF&&{role:roleF}), ...(statusF&&{status:statusF}), ...(districtFilter && { district: districtFilter }) });
       const { data } = await api.get(`/admin/users?${q}`);
       setUsers(data.data.rows); setTotal(data.data.total); setPages(data.data.pages);
       setSelectedIds([]);
     } catch { setUsers([]); } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchUsers(); }, [page, limit, roleF, statusF]); // eslint-disable-line
+  useEffect(() => { fetchUsers(); }, [page, limit, roleF, statusF, districtFilter]); // eslint-disable-line
 
   const toggleUser = async (id) => {
     try {
@@ -82,6 +85,7 @@ export default function AdminUsers() {
     }
 
     try {
+      setDeletingBulk(true);
       await Promise.all(idsToDelete.map(id => api.delete(`/admin/users/${id}`)));
       toast.success(`${idsToDelete.length} users deleted successfully`);
       setUsers(u => u.filter(x => !idsToDelete.includes(x.id)));
@@ -90,6 +94,8 @@ export default function AdminUsers() {
     } catch (err) {
       toast.error('Some users could not be deleted');
       fetchUsers();
+    } finally {
+      setDeletingBulk(false);
     }
   };
 
@@ -100,47 +106,42 @@ export default function AdminUsers() {
           <h1 style={{ display:'flex', alignItems:'center', gap:10, fontWeight:800, fontSize:'1.6rem', color:'var(--text-strong)', marginBottom:4 }}>
             <FiUsers style={{ color:'var(--primary)' }}/> {t('admin.users')}
           </h1>
-          <p style={{ color:'var(--text-muted)', fontSize:'0.88rem' }}>{total} {isBn?'মোট নিবন্ধিত ব্যবহারকারী':'total registered users'}</p>
-        </div>
-      </div>
 
-      <div style={{ display:'flex', gap:12, marginBottom:'1.5rem', flexWrap:'wrap', background:'var(--surface)', padding:'1rem', borderRadius:16, border:'1px solid var(--border)' }}>
-        <form onSubmit={e=>{e.preventDefault();setPage(1);fetchUsers();}} style={{ display:'flex', gap:10, flex:1, minWidth:280 }}>
-          <div style={{ flex:1, position:'relative' }}>
-            <FiSearch style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', color:'var(--text-dim)', pointerEvents:'none' }} size={16}/>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={isBn?'নাম বা ইমেইল দিয়ে খুঁজুন...':'Search by name or email...'} className="form-input" style={{ paddingLeft:42, height:44, borderRadius:12 }}/>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+          <form onSubmit={e => { e.preventDefault(); setPage(1); fetchUsers(); }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative' }}>
+              <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} size={14} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={isBn?'খুঁজুন...':'Search name or email...'} className="form-input" style={{ paddingLeft: 36, height: 40, borderRadius: 10, fontSize: '0.85rem', width: 220 }}/>
+            </div>
+            <select value={districtFilter} onChange={e => { setDistrictFilter(e.target.value); setPage(1); }} className="form-input" style={{ height: 40, borderRadius: 10, fontSize: '0.85rem', width: 150 }}>
+              <option value="">{isBn ? 'সব জেলা' : 'All Districts'}</option>
+              {BD_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <select value={roleF} onChange={e=>{setRoleF(e.target.value);setPage(1);}} className="form-input" style={{ height: 40, borderRadius: 10, fontSize: '0.85rem', width: 100 }}>
+              <option value="">{isBn?'ভূমিকা':'Role'}</option>
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+            <select value={statusF} onChange={e=>{setStatusF(e.target.value);setPage(1);}} className="form-input" style={{ height: 40, borderRadius: 10, fontSize: '0.85rem', width: 100 }}>
+              <option value="">{isBn?'স্ট্যাটাস':'Status'}</option>
+              <option value="active">Active</option>
+              <option value="blocked">Blocked</option>
+            </select>
+            <button type="submit" className="btn btn-primary" style={{ height: 40, padding: '0 15px' }}>{t('common.search')}</button>
+          </form>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            {selectedIds.length > 0 && (
+              <button onClick={bulkDelete} className="btn btn-outline" style={{ height: 40, borderRadius: 10, borderColor:'var(--red)', color:'var(--red)' }} disabled={deletingBulk}>
+                {deletingBulk ? <div className="spinner spinner-sm" style={{ borderTopColor:'var(--red)' }}/> : <FiTrash2 size={13}/>} 
+                {isBn ? `নির্বাচিত মুছুন (${selectedIds.length})` : `Delete (${selectedIds.length})`}
+              </button>
+            )}
+            <button className="btn btn-ghost" style={{ height: 40, borderRadius: 10, border:'1px solid var(--border)' }}><FiUploadCloud size={13}/>{isBn ? 'ইমপোর্ট' : 'Import'}</button>
+            <button className="btn btn-primary" style={{ height: 40, borderRadius: 10 }}><FiPlus size={13}/>{isBn?'যোগ করুন':'Add User'}</button>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ height:44, padding:'0 20px' }}>{t('common.search')}</button>
-        </form>
-        <div style={{ display:'flex', gap:10 }}>
-          <select value={roleF} onChange={e=>{setRoleF(e.target.value);setPage(1);}} className="form-select" style={{ width:'auto', minWidth:140, height:44, borderRadius:12 }}>
-            <option value="">{isBn?'সব ভূমিকা':'All Roles'}</option>
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
-          <select value={statusF} onChange={e=>{setStatusF(e.target.value);setPage(1);}} className="form-select" style={{ width:'auto', minWidth:140, height:44, borderRadius:12 }}>
-            <option value="">{isBn?'সব স্ট্যাটাস':'All Status'}</option>
-            <option value="active">Active</option>
-            <option value="blocked">Blocked</option>
-          </select>
-          <select value={limit} onChange={e=>{setLimit(Number(e.target.value));setPage(1);}} className="form-select" style={{ width:'auto', height:44, borderRadius:12, background:'var(--surface-2)' }}>
-            <option value={20}>20 {isBn?'টি/পৃষ্ঠা':'/ page'}</option>
-            <option value={50}>50 {isBn?'টি/পৃষ্ঠা':'/ page'}</option>
-            <option value={100}>100 {isBn?'টি/পৃষ্ঠা':'/ page'}</option>
-          </select>
         </div>
       </div>
-
-      {selectedIds.length > 0 && (
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(239, 68, 68, 0.1)', border:'1px solid rgba(239, 68, 68, 0.3)', padding:'10px 16px', borderRadius:12, marginBottom:'1rem' }}>
-          <span style={{ color:'var(--red)', fontWeight:600, fontSize:'0.9rem' }}>
-            {selectedIds.length} {isBn ? 'টি নির্বাচিত' : 'selected'}
-          </span>
-          <button onClick={bulkDelete} className="btn btn-danger" style={{ height:36, padding:'0 16px', fontSize:'0.85rem' }}>
-            <FiTrash2 /> {isBn ? 'নির্বাচিত মুছুন' : 'Delete Selected'}
-          </button>
-        </div>
-      )}
 
       <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, overflow:'hidden' }}>
         {loading ? (

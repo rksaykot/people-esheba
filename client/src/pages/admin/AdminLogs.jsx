@@ -33,7 +33,7 @@ export default function AdminLogs() {
           <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, fontSize: '1.6rem', color:'var(--text-strong)', marginBottom: 4 }}>
             <FiPieChart style={{ color: 'var(--purple)' }} /> {isBn ? 'সিস্টেম লগ' : 'System Logs'}
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>{isBn ? 'সিস্টেমের সাম্প্রতিক কার্যকলাপ' : 'Recent system activities and events'}</p>
+
         </div>
         <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: 4, borderRadius: 12, border: '1px solid var(--border)' }}>
           {['all', 'info', 'success', 'warning', 'error'].map(s => (
