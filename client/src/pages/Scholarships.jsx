@@ -9,6 +9,7 @@ import {
   MdSchool, MdAccountBalance, MdBusinessCenter, MdPublic, MdVolunteerActivism
 } from 'react-icons/md';
 import { useApi } from '../hooks/useApi';
+import toast from 'react-hot-toast';
 
 /* ── Constants ──────────────────────────────────────────── */
 const SCHOLARSHIP_TYPES = ['govt', 'ngo', 'international', 'corporate', 'other'];
@@ -418,10 +419,18 @@ export default function Scholarships() {
                     </span>
                   </div>
 
-                  <a 
-                    href={item.link ? (item.link.startsWith('http') ? item.link : `https://${item.link}`) : '#'}
-                    target="_blank" 
-                    rel="noreferrer"
+                  <button 
+                    onClick={() => {
+                      if (!item.link || item.link === '#') {
+                        toast.error(isBn ? 'এই স্কলারশিপের কোনো লিংক পাওয়া যায়নি' : 'No link available for this scholarship');
+                        return;
+                      }
+                      let url = item.link;
+                      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        url = 'https://' + url;
+                      }
+                      window.open(url, '_blank');
+                    }}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '10px 14px', borderRadius: 12,
@@ -429,13 +438,17 @@ export default function Scholarships() {
                       color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: '0.85rem',
                       boxShadow: `0 4px 14px ${meta.color}30`,
                       cursor: 'pointer',
+                      border: 'none',
+                      width: '100%',
                     }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                       <FiAward size={14} /> {t("education.view_details") || "View Details"}
                     </span>
                     <FiExternalLink size={15} style={{ opacity: 0.7 }} />
-                  </a>
+                  </button>
                 </div>
               );
             })}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../context/LanguageContext";
@@ -1218,53 +1219,165 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Search bar */}
+      </nav>
+
+      {/* Floating Search Overlay (Moved outside nav to prevent transform/filter clipping) */}
+      <AnimatePresence>
         {searchOpen && (
-          <div style={{ padding: "0 1.5rem 1rem" }}>
-            <form
-              onSubmit={handleSearch}
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setSearchOpen(false)}
               style={{
+                position: "fixed",
+                inset: 0,
+                background: isDark ? "rgba(0,0,0,0.6)" : "rgba(15,23,42,0.3)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
+                zIndex: 9999, /* High z-index to be on top of everything */
+              }}
+            />
+            
+            {/* Search Box */}
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 25 }}
+              style={{
+                position: "fixed", /* Fixed relative to viewport */
+                top: "120px", /* Below the navbar */
+                left: 0,
+                right: 0,
+                padding: "0 1.5rem",
+                zIndex: 10000,
                 display: "flex",
-                gap: 8,
-                maxWidth: 560,
-                margin: "0 auto",
+                justifyContent: "center",
+                pointerEvents: "none",
               }}
             >
-              <div style={{ flex: 1, position: "relative" }}>
-                <FiSearch
+              <form
+                onSubmit={handleSearch}
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  width: "100%",
+                  maxWidth: 720,
+                  background: "var(--surface)",
+                  padding: "1rem",
+                  borderRadius: "1.5rem",
+                  border: "1px solid var(--border)",
+                  boxShadow: isDark ? "0 25px 50px -12px rgba(0,0,0,0.7)" : "0 25px 50px -12px rgba(15,23,42,0.25)",
+                  pointerEvents: "auto",
+                  position: "relative",
+                }}
+              >
+                <div style={{ flex: 1, position: "relative" }}>
+                  <FiSearch
+                    style={{
+                      position: "absolute",
+                      left: 18,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--text-muted)",
+                      pointerEvents: "none",
+                    }}
+                    size={20}
+                  />
+                  <input
+                    ref={searchRef}
+                    value={searchQ}
+                    onChange={(e) => setSearchQ(e.target.value)}
+                    placeholder={t("nav.search")}
+                    style={{
+                      width: "100%",
+                      padding: "1rem 3.5rem 1rem 3.25rem",
+                      borderRadius: "1rem",
+                      border: "1px solid var(--border-2)",
+                      background: "var(--surface-2)",
+                      color: "var(--text)",
+                      fontSize: "1.1rem",
+                      outline: "none",
+                    }}
+                  />
+                  
+                  {searchQ && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchQ(""); searchRef.current?.focus(); }}
+                      style={{
+                        position: "absolute",
+                        right: 14,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "var(--surface-3)",
+                        color: "var(--text-muted)",
+                        border: "none",
+                        width: 28,
+                        height: 28,
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      <FiX size={14} />
+                    </button>
+                  )}
+                </div>
+                
+                <button
+                  type="submit"
+                  style={{
+                    background: "var(--grad-red)",
+                    color: "#fff",
+                    fontWeight: 800,
+                    fontSize: "1.05rem",
+                    padding: "0 2rem",
+                    borderRadius: "1rem",
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 6px 16px -4px rgba(230,57,70,0.5)",
+                    transition: "transform 0.2s"
+                  }}
+                >
+                  {t("common.search")}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(false)}
+                  aria-label="Close search"
                   style={{
                     position: "absolute",
-                    left: 11,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--text-dim)",
-                    pointerEvents: "none",
+                    top: -46,
+                    right: 0,
+                    background: "var(--surface)",
+                    color: "var(--text)",
+                    border: "1px solid var(--border)",
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    boxShadow: isDark ? "0 4px 12px rgba(0,0,0,0.4)" : "0 4px 12px rgba(15,23,42,0.1)",
                   }}
-                  size={15}
-                />
-                <input
-                  ref={searchRef}
-                  value={searchQ}
-                  onChange={(e) => setSearchQ(e.target.value)}
-                  placeholder={t("nav.search")}
-                  className="form-input"
-                  style={{ paddingLeft: 34 }}
-                />
-              </div>
-              <button type="submit" className="btn btn-primary btn-sm">
-                {t("common.search")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearchOpen(false)}
-                className="btn btn-ghost btn-sm"
-              >
-                <FiX size={14} />
-              </button>
-            </form>
-          </div>
+                >
+                  <FiX size={18} />
+                </button>
+              </form>
+            </motion.div>
+          </>
         )}
-      </nav>
+      </AnimatePresence>
 
       {/* Mobile Drawer */}
       {mobile && (

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -9,6 +10,7 @@ import {
   FiCheckCircle, FiXCircle, FiArrowRight,
   FiShield, FiClock, FiUsers, FiLayers
 } from 'react-icons/fi';
+import SortDropdown from '../components/ui/SortDropdown';
 
 const GROUPS = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 const GROUP_COLORS = {
@@ -47,6 +49,7 @@ export default function Blood() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  const [searchParams] = useSearchParams();
   const [donors, setDonors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -70,6 +73,7 @@ export default function Blood() {
     setLoading(true);
     try {
       const q = new URLSearchParams({ page, limit: 16, ...filter });
+      if (searchParams.get('sort')) q.set('sort', searchParams.get('sort'));
       const { data } = await api.get(`/blood-donors?${q}`);
       setDonors(data.data.rows);
       setTotal(data.data.total);
@@ -81,7 +85,7 @@ export default function Blood() {
     }
   };
 
-  useEffect(() => { fetchDonors(); }, [page, filter.blood_group]); // eslint-disable-line
+  useEffect(() => { fetchDonors(); }, [page, filter.blood_group, filter.district, searchParams.get('sort')]); // eslint-disable-line
 
   // Fetch hero stats (available & districts) - graceful fallback
   useEffect(() => {
@@ -350,6 +354,7 @@ export default function Blood() {
         {/* Result meta & actions */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SortDropdown />
             {filter.blood_group && (
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,

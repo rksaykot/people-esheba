@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -9,6 +9,7 @@ import {
   FiActivity, FiPhone, FiUser, FiDroplet
 } from 'react-icons/fi';
 import { MdLocalHospital, MdMedicalServices, MdLocalPharmacy } from 'react-icons/md';
+import DetailsModal from '../components/ui/DetailsModal';
 import { useApi } from '../hooks/useApi';
 
 /* ── Constants ──────────────────────────────────────────── */
@@ -61,7 +62,7 @@ function Counter({ end, suffix = '' }) {
 
 /* ── Main Component ───────────────────────────────────── */
 export default function Health() {
-  const { t } = useLang();
+  const { t, isBn } = useLang();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -69,6 +70,7 @@ export default function Health() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState(searchParams.get('type') || '');
   const [visible, setVisible] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
   useEffect(() => {
@@ -413,24 +415,29 @@ export default function Health() {
                   </div>
 
                   {/* Call-to-action footer */}
-                  <a
-                    href={`tel:${item.phone}`}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 14px', borderRadius: 12,
-                      background: `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)`,
+                  <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                    <a
+                      href={`tel:${item.phone}`}
+                      style={{
+                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        padding: '10px', borderRadius: 12, background: 'var(--surface-2)',
+                        color: 'var(--text)', textDecoration: 'none', fontWeight: 700, fontSize: '0.85rem',
+                        border: '1px solid var(--border)', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-3)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                    >
+                      <FiPhone size={14} /> Call
+                    </a>
+                    <button onClick={() => setSelectedItem(item)} style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '10px', borderRadius: 12, background: `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)`,
                       color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: '0.85rem',
-                      boxShadow: `0 4px 14px ${meta.color}30`,
-                      transition: 'transform 0.2s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <FiPhone size={15} /> {item.phone}
-                    </span>
-                    <FiExternalLink size={15} style={{ opacity: 0.8 }} />
-                  </a>
+                      boxShadow: `0 4px 14px ${meta.color}30`, transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                    }}>
+                      {isBn ? 'বিস্তারিত দেখুন' : 'View Details'} <FiExternalLink size={14} style={{ opacity: 0.8 }} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -505,6 +512,12 @@ export default function Health() {
           100% { opacity:0.5; }
         }
       `}</style>
+      <DetailsModal 
+        isOpen={!!selectedItem} 
+        onClose={() => setSelectedItem(null)} 
+        item={selectedItem} 
+        type="directory" 
+      />
     </div>
   );
 }

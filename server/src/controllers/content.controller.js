@@ -7,15 +7,21 @@ const { ok, err } = require('../utils/response');
 
 exports.getDoctors = async (req, res) => {
   try {
-    const { search, specialty, district, page = 1, limit = 20 } = req.query;
+    const { search, specialty, district, sort, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where = ['is_active = 1'];
     const params = [];
     if (search) { where.push('(name LIKE ? OR specialty LIKE ? OR area LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
     if (specialty) { where.push('specialty = ?'); params.push(specialty); }
     if (district)  { where.push('district = ?');  params.push(district); }
+    
+    let orderClause = 'ORDER BY is_verified DESC, rating DESC, created_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY created_at ASC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY name ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY name DESC';
+
     const [rows] = await db.execute(
-      `SELECT * FROM doctors WHERE ${where.join(' AND ')} ORDER BY is_verified DESC, rating DESC, created_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`,
+      `SELECT * FROM doctors WHERE ${where.join(' AND ')} ${orderClause} LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );
     const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM doctors WHERE ${where.join(' AND ')}`, params);
@@ -33,7 +39,7 @@ exports.getDoctorById = async (req, res) => {
 
 exports.getPharmacies = async (req, res) => {
   try {
-    const { search, district, is_24h, type, page = 1, limit = 20 } = req.query;
+    const { search, district, is_24h, type, sort, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where = ['is_active = 1'];
     const params = [];
@@ -41,8 +47,14 @@ exports.getPharmacies = async (req, res) => {
     if (district){ where.push('district = ?'); params.push(district); }
     if (is_24h)  { where.push('is_24h = 1'); }
     if (type)    { where.push('type = ?'); params.push(type); }
+    
+    let orderClause = 'ORDER BY is_verified DESC, is_24h DESC, created_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY created_at ASC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY name ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY name DESC';
+
     const [rows] = await db.execute(
-      `SELECT * FROM pharmacies WHERE ${where.join(' AND ')} ORDER BY is_verified DESC, is_24h DESC, created_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`,
+      `SELECT * FROM pharmacies WHERE ${where.join(' AND ')} ${orderClause} LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );
     const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM pharmacies WHERE ${where.join(' AND ')}`, params);
@@ -54,14 +66,20 @@ exports.getPharmacies = async (req, res) => {
 
 exports.getNotices = async (req, res) => {
   try {
-    const { search, category, page = 1, limit = 20 } = req.query;
+    const { search, category, sort, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where = ['is_active = 1'];
     const params = [];
     if (search)   { where.push('(title LIKE ? OR source LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
     if (category) { where.push('category = ?'); params.push(category); }
+
+    let orderClause = 'ORDER BY created_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY created_at ASC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY title ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY title DESC';
+
     const [rows] = await db.execute(
-      `SELECT * FROM notices WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`,
+      `SELECT * FROM notices WHERE ${where.join(' AND ')} ${orderClause} LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );
     const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM notices WHERE ${where.join(' AND ')}`, params);
@@ -73,7 +91,7 @@ exports.getNotices = async (req, res) => {
 
 exports.getEducation = async (req, res) => {
   try {
-    const { search, type, subtype, district, page = 1, limit = 20 } = req.query;
+    const { search, type, subtype, district, sort, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where = ['is_active = 1'];
     const params = [];
@@ -81,8 +99,14 @@ exports.getEducation = async (req, res) => {
     if (type)     { where.push('type = ?');     params.push(type); }
     if (subtype)  { where.push('subtype = ?');  params.push(subtype); }
     if (district) { where.push('district = ?'); params.push(district); }
+
+    let orderClause = 'ORDER BY is_verified DESC, created_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY created_at ASC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY name ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY name DESC';
+
     const [rows] = await db.execute(
-      `SELECT * FROM education_institutions WHERE ${where.join(' AND ')} ORDER BY is_verified DESC, created_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`,
+      `SELECT * FROM education_institutions WHERE ${where.join(' AND ')} ${orderClause} LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );
     const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM education_institutions WHERE ${where.join(' AND ')}`, params);
@@ -90,18 +114,33 @@ exports.getEducation = async (req, res) => {
   } catch (e) { console.error(e); err(res, 'Failed', 500); }
 };
 
+exports.getEducationById = async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT * FROM education_institutions WHERE id = ? AND is_active = 1', [req.params.id]);
+    if (!rows.length) return err(res, 'Not Found', 404);
+    ok(res, rows[0]);
+  } catch (e) { console.error(e); err(res, 'Failed', 500); }
+};
+
 /* ═══════════════════════ SCHOLARSHIPS ════════════════════════ */
 
 exports.getScholarships = async (req, res) => {
   try {
-    const { search, category, page = 1, limit = 20 } = req.query;
+    const { search, category, sort, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where = ['is_active = 1'];
     const params = [];
     if (search)   { where.push('(title LIKE ? OR provider LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
     if (category) { where.push('category = ?'); params.push(category); }
+
+    let orderClause = 'ORDER BY deadline ASC, created_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY created_at ASC';
+    else if (sort === 'newest') orderClause = 'ORDER BY created_at DESC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY title ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY title DESC';
+
     const [rows] = await db.execute(
-      `SELECT * FROM scholarships WHERE ${where.join(' AND ')} ORDER BY deadline ASC, created_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`,
+      `SELECT * FROM scholarships WHERE ${where.join(' AND ')} ${orderClause} LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );
     const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM scholarships WHERE ${where.join(' AND ')}`, params);

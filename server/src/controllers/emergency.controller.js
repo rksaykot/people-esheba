@@ -3,7 +3,7 @@ const { ok, err } = require('../utils/response');
 
 exports.getAll = async (req, res) => {
   try {
-    const { type, district, division, search, page = 1, limit = 20 } = req.query;
+    const { type, district, division, search, sort, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let   where  = ['1=1'];
     const params = [];
@@ -13,12 +13,17 @@ exports.getAll = async (req, res) => {
     if (division) { where.push('e.division LIKE ?');       params.push(`%${division}%`); }
     if (search)   { where.push('e.name LIKE ?');           params.push(`%${search}%`); }
 
+    let orderClause = 'ORDER BY e.is_verified DESC, e.created_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY e.created_at ASC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY e.name ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY e.name DESC';
+
     const [rows] = await db.execute(
       `SELECT e.*, u.name AS added_by
        FROM emergency_services e
        LEFT JOIN users u ON e.created_by = u.id
        WHERE ${where.join(' AND ')}
-       ORDER BY e.is_verified DESC, e.name ASC
+       ${orderClause}
        LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );

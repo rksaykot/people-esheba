@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLang } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { useSearchParams } from 'react-router-dom';
 import {
   FiUser, FiSearch, FiMapPin, FiFilter, FiExternalLink,
   FiShield, FiAward, FiClock, FiHeart, FiStar, FiGlobe, FiChevronRight,
   FiPhone
 } from 'react-icons/fi';
 import { MdHealthAndSafety, MdScience, MdPerson, MdLocalHospital, MdSchool } from 'react-icons/md';
+import SortDropdown from '../components/ui/SortDropdown';
 
 /* ── Constants ──────────────────────────────────────────── */
 const SPECIALTIES = [
@@ -58,6 +60,7 @@ export default function Doctors() {
   const { t, isBn } = useLang();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
   const [specialtyFilter, setSpecialtyFilter] = useState('');
@@ -73,7 +76,13 @@ export default function Doctors() {
   }, [search, specialtyFilter]);
 
   /* Real data — managed from Admin → Doctors */
-  const { data, loading } = useApi('/doctors', { params: { specialty: specialtyFilter || undefined, search: search || undefined } });
+  const { data, loading } = useApi('/doctors', { 
+    params: { 
+      specialty: specialtyFilter || undefined, 
+      search: search || undefined,
+      sort: searchParams.get('sort') || undefined
+    } 
+  });
   const doctors = data?.rows || data || [];
 
   const filtered = doctors.filter(item => {
@@ -292,6 +301,8 @@ export default function Doctors() {
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {t("health.found_doctors") || "doctors found"}</>}
           </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SortDropdown />
           {(specialtyFilter || search) && (
             <button
               onClick={() => { setSearch(''); setSpecialtyFilter(''); }}
@@ -303,6 +314,7 @@ export default function Doctors() {
               {t("health.clear_filter") || "Clear all"} ×
             </button>
           )}
+          </div>
         </div>
 
         {/* Cards Grid */}

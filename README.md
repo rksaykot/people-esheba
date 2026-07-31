@@ -2,6 +2,14 @@
 
 A production-level, full-stack, AI-powered citizen services platform for Bangladesh.
 
+## Command for build and android studio
+
+```bash
+cd client && npm run build && npx cap sync && npx cap open android
+
+```
+
+
 ## 📁 Project Structure
 ```
 pesheba/
@@ -82,6 +90,6 @@ npm run dev               # http://localhost:5173
 | GET  | /api/admin/dashboard | Admin |
 | ... | ... | ... |
 
-md jumman
 RK Saykot
+md jumman
 md saif

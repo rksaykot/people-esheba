@@ -13,20 +13,23 @@ export default function AdminUsers() {
   const [total, setTotal]   = useState(0);
   const [page, setPage]     = useState(1);
   const [pages, setPages]   = useState(1);
+  const [limit, setLimit]   = useState(20);
   const [search, setSearch] = useState('');
   const [roleF, setRoleF]   = useState('');
   const [statusF, setStatusF] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams({ page, limit:20, ...(search&&{search}), ...(roleF&&{role:roleF}), ...(statusF&&{status:statusF}) });
+      const q = new URLSearchParams({ page, limit, ...(search&&{search}), ...(roleF&&{role:roleF}), ...(statusF&&{status:statusF}) });
       const { data } = await api.get(`/admin/users?${q}`);
       setUsers(data.data.rows); setTotal(data.data.total); setPages(data.data.pages);
+      setSelectedIds([]);
     } catch { setUsers([]); } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchUsers(); }, [page, roleF, statusF]); // eslint-disable-line
+  useEffect(() => { fetchUsers(); }, [page, limit, roleF, statusF]); // eslint-disable-line
 
   const toggleUser = async (id) => {
     try {
@@ -51,7 +54,43 @@ export default function AdminUsers() {
       toast.success('User deleted');
       setUsers(u => u.filter(x => x.id !== id));
       setTotal(t => t - 1);
+      setSelectedIds(s => s.filter(sid => sid !== id));
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === users.length && users.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(users.map(u => u.id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const bulkDelete = async () => {
+    if (!selectedIds.length) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} users?`)) return;
+    
+    // Ensure we don't try to delete ourselves if somehow selected
+    const idsToDelete = selectedIds.filter(id => id !== me?.id);
+    if (idsToDelete.length === 0) {
+      toast.error('Cannot delete yourself.');
+      return;
+    }
+
+    try {
+      await Promise.all(idsToDelete.map(id => api.delete(`/admin/users/${id}`)));
+      toast.success(`${idsToDelete.length} users deleted successfully`);
+      setUsers(u => u.filter(x => !idsToDelete.includes(x.id)));
+      setTotal(t => t - idsToDelete.length);
+      setSelectedIds([]);
+    } catch (err) {
+      toast.error('Some users could not be deleted');
+      fetchUsers();
+    }
   };
 
   return (
@@ -84,8 +123,24 @@ export default function AdminUsers() {
             <option value="active">Active</option>
             <option value="blocked">Blocked</option>
           </select>
+          <select value={limit} onChange={e=>{setLimit(Number(e.target.value));setPage(1);}} className="form-select" style={{ width:'auto', height:44, borderRadius:12, background:'var(--surface-2)' }}>
+            <option value={20}>20 {isBn?'টি/পৃষ্ঠা':'/ page'}</option>
+            <option value={50}>50 {isBn?'টি/পৃষ্ঠা':'/ page'}</option>
+            <option value={100}>100 {isBn?'টি/পৃষ্ঠা':'/ page'}</option>
+          </select>
         </div>
       </div>
+
+      {selectedIds.length > 0 && (
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(239, 68, 68, 0.1)', border:'1px solid rgba(239, 68, 68, 0.3)', padding:'10px 16px', borderRadius:12, marginBottom:'1rem' }}>
+          <span style={{ color:'var(--red)', fontWeight:600, fontSize:'0.9rem' }}>
+            {selectedIds.length} {isBn ? 'টি নির্বাচিত' : 'selected'}
+          </span>
+          <button onClick={bulkDelete} className="btn btn-danger" style={{ height:36, padding:'0 16px', fontSize:'0.85rem' }}>
+            <FiTrash2 /> {isBn ? 'নির্বাচিত মুছুন' : 'Delete Selected'}
+          </button>
+        </div>
+      )}
 
       <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, overflow:'hidden' }}>
         {loading ? (
@@ -95,6 +150,14 @@ export default function AdminUsers() {
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: 40, textAlign: 'center' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={users.length > 0 && selectedIds.length === users.length}
+                      onChange={toggleSelectAll}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  </th>
                   <th>{isBn?'ব্যবহারকারী':'User'}</th>
                   <th>{isBn?'যোগাযোগ':'Contact'}</th>
                   <th>{isBn?'এলাকা':'Location'}</th>
@@ -106,7 +169,15 @@ export default function AdminUsers() {
               </thead>
               <tbody>
                 {users.map(u => (
-                  <tr key={u.id}>
+                  <tr key={u.id} style={{ background: selectedIds.includes(u.id) ? 'var(--surface-2)' : 'transparent' }}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedIds.includes(u.id)}
+                        onChange={() => toggleSelect(u.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </td>
                     <td>
                       <div style={{ display:'flex', alignItems:'center', gap:9 }}>
                         <div style={{ width:34, height:34, borderRadius:'50%', background:'var(--grad-cyan)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.8rem', fontWeight:800, color:'var(--text-strong)', flexShrink:0 }}>
@@ -172,7 +243,7 @@ export default function AdminUsers() {
                   </tr>
                 ))}
                 {users.length === 0 && (
-                  <tr><td colSpan={7} style={{ textAlign:'center', padding:'2.5rem', color:'var(--text-dim)' }}>{t('common.noResults')}</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign:'center', padding:'2.5rem', color:'var(--text-dim)' }}>{t('common.noResults')}</td></tr>
                 )}
               </tbody>
             </table>

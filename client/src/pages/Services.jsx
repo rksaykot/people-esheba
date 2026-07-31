@@ -336,15 +336,16 @@ export default function Services() {
               return (
                 <div
                   key={item.id}
-                  style={{
-                    background: 'var(--surface)', border: '1px solid var(--border)',
-                    borderRadius: 18, padding: '1.5rem', position: 'relative',
-                    overflow: 'hidden', transition: 'all 0.24s cubic-bezier(0.4,0,0.2,1)',
-                    opacity: visible ? 1 : 0,
-                    transform: visible ? 'none' : 'translateY(20px)',
-                    transitionDelay: `${Math.min(i * 50, 300)}ms`,
-                    cursor: 'default',
-                  }}
+                    style={{
+                      background: 'var(--surface)', border: '1px solid var(--border)',
+                      borderRadius: 18, padding: '1.5rem', position: 'relative',
+                      overflow: 'hidden', transition: 'all 0.24s cubic-bezier(0.4,0,0.2,1)',
+                      display: 'flex', flexDirection: 'column',
+                      opacity: visible ? 1 : 0,
+                      transform: visible ? 'none' : 'translateY(20px)',
+                      transitionDelay: `${Math.min(i * 50, 300)}ms`,
+                      cursor: 'default',
+                    }}
                   onMouseEnter={e => {
                     e.currentTarget.style.transform = 'translateY(-4px)';
                     e.currentTarget.style.borderColor = meta.color + '40';
@@ -396,6 +397,8 @@ export default function Services() {
                   <h3 style={{
                     fontWeight: 800, color: 'var(--text)',
                     marginBottom: '0.4rem', fontSize: '0.97rem', lineHeight: 1.35,
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden', height: '2.65rem'
                   }}>
                     {item.name}
                   </h3>
@@ -420,7 +423,7 @@ export default function Services() {
                     href={`tel:${item.phone}`}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 14px', borderRadius: 12,
+                      padding: '10px 14px', borderRadius: 12, marginTop: 'auto',
                       background: `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)`,
                       color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: '0.85rem',
                       boxShadow: `0 4px 14px ${meta.color}30`,

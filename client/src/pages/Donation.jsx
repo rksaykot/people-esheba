@@ -11,6 +11,7 @@ import {
 import { MdHealthAndSafety, MdSchool, MdSevereCold, MdLocalFireDepartment, MdAgriculture, MdWheelchairPickup } from 'react-icons/md';
 import HelpRequestModal from '../components/donation/HelpRequestModal';
 import { useApi } from '../hooks/useApi';
+import SortDropdown from '../components/ui/SortDropdown';
 
 /* ── Constants ──────────────────────────────────────────── */
 const DONATE_CATS = [
@@ -88,7 +89,13 @@ export default function Donate() {
   };
 
   /* Real data — approved requests submitted via "Request Help", moderated in Admin → Donations */
-  const { data, loading, refetch } = useApi('/donations', { params: { category: activeCat !== 'all' ? activeCat : undefined, status: 'approved' } });
+  const { data, loading, refetch } = useApi('/donations', { 
+    params: { 
+      category: activeCat !== 'all' ? activeCat : undefined, 
+      status: 'approved',
+      sort: searchParams.get('sort') || undefined
+    } 
+  });
   const filteredRequests = (data?.rows || []).map(mapHelpRequest);
 
   // Stats for hero section
@@ -261,6 +268,8 @@ export default function Donate() {
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filteredRequests.length}</strong> {t("donate.found_requests") || "help requests found"}</>}
           </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SortDropdown />
           {activeCat !== 'all' && (
             <button
               onClick={() => handleCatChange('all')}
@@ -272,6 +281,7 @@ export default function Donate() {
               {t("health.clear_filter") || "Clear all"} ×
             </button>
           )}
+          </div>
         </div>
 
         {/* Cards Grid */}

@@ -3,7 +3,7 @@ const { ok, err } = require('../utils/response');
 
 exports.getAll = async (req, res) => {
   try {
-    const { category, district, search, page = 1, limit = 16 } = req.query;
+    const { category, district, search, sort, page = 1, limit = 16 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let   where  = ['v.is_active = 1'];
     const params = [];
@@ -12,10 +12,15 @@ exports.getAll = async (req, res) => {
     if (district) { where.push('v.district LIKE ?');   params.push(`%${district}%`); }
     if (search)   { where.push('u.name LIKE ?');       params.push(`%${search}%`); }
 
+    let orderClause = 'ORDER BY v.created_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY v.created_at ASC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY u.name ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY u.name DESC';
+
     const [rows] = await db.execute(
       `SELECT v.*, u.name, u.avatar, u.is_verified
        FROM volunteers v JOIN users u ON v.user_id=u.id
-       WHERE ${where.join(' AND ')} ORDER BY v.created_at DESC
+       WHERE ${where.join(' AND ')} ${orderClause}
        LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );

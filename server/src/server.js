@@ -119,8 +119,23 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // ── Start Server ──────────────────────────────────────────────
-// ── Start Server ──────────────────────────────────────────────
 // Vercel serverless environment-এ app.listen() কল করা যাবে না
+
+// ── Automated Web Scraper (Cron Job) ──────────────────────────
+const cron = require('node-cron');
+const { runScrapers } = require('./services/scraperService');
+
+// Schedule task to run every 12 hours (e.g., 12:00 AM, 12:00 PM)
+cron.schedule('0 */12 * * *', async () => {
+  console.log('[Cron] Running scheduled automated notice scrapers...');
+  await runScrapers();
+});
+
+// Run it once immediately when the server starts in dev mode for testing (Optional)
+if (process.env.NODE_ENV !== 'production') {
+  // setTimeout(() => runScrapers(), 5000); // Wait 5s then test scrape
+}
+
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`\n🚀 People E-Sheba API`);

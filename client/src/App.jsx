@@ -44,6 +44,8 @@ import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Help from './pages/Help';
+import EducationDetail from './pages/EducationDetail';
+import DirectoryDetail from './pages/DirectoryDetail';
 
 // Admin pages
 import AdminDashboard    from './pages/admin/AdminDashboard';
@@ -112,7 +114,9 @@ function AppRoutes() {
 
           {/* New pages */}
           <Route path="health"         element={<Health />} />
+          <Route path="directory/:id"  element={<DirectoryDetail />} />
           <Route path="education"      element={<Education />} />
+          <Route path="education/:id"  element={<EducationDetail />} />
           <Route path="services"       element={<Services />} />
           <Route path="notices"        element={<Notices />} />
           <Route path="government"     element={<Government />} />

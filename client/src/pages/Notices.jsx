@@ -7,8 +7,12 @@ import {
   FiFileText, FiArrowRight, FiClock, FiExternalLink, FiActivity,
   FiSearch, FiFilter, FiShield, FiStar, FiCheckCircle, FiTag
 } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 
 import { useApi } from '../hooks/useApi';
+import SortDropdown from '../components/ui/SortDropdown';
+import { formatDistanceToNow } from 'date-fns';
+import { enUS } from 'date-fns/locale';
 
 /* ── Constants ──────────────────────────────────────────── */
 const NOTICE_CATS = [
@@ -27,12 +31,49 @@ const CAT_META = Object.fromEntries(
 
 /* Maps a notices table row into this page's shape. isBn picks the Bengali
    column when the site is in Bengali mode and a translation exists. */
+function getTimeAgo(dateString, isBn) {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    if (!isBn) {
+      return formatDistanceToNow(date, { addSuffix: true, locale: enUS });
+    } else {
+      const diff = Date.now() - date.getTime();
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      
+      const toBnNum = n => n.toString().replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+      
+      if (days === 0) {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        if (hours === 0) {
+          const minutes = Math.floor(diff / (1000 * 60));
+          if (minutes <= 1) return 'এইমাত্র';
+          return `${toBnNum(minutes)} মিনিট আগে`;
+        }
+        return `${toBnNum(hours)} ঘণ্টা আগে`;
+      }
+      if (days === 1) return 'গতকাল';
+      if (days < 30) return `${toBnNum(days)} দিন আগে`;
+      
+      const months = Math.floor(days / 30);
+      if (months < 12) return `${toBnNum(months)} মাস আগে`;
+      
+      const years = Math.floor(days / 365);
+      return `${toBnNum(years)} বছর আগে`;
+    }
+  } catch (e) {
+    return '';
+  }
+}
+
 function mapNotice(row, isBn) {
   return {
     id: row.id,
     cat: row.category,
     title: (isBn && row.title_bn) ? row.title_bn : row.title,
     date: new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+    timeAgoStr: getTimeAgo(row.created_at, isBn),
     org: row.source || 'People E-Sheba',
     urgent: !!row.is_urgent,
     desc: (isBn && row.description_bn) ? row.description_bn : (row.description || ''),
@@ -91,7 +132,13 @@ export default function Notices() {
   };
 
   /* Real data — managed from Admin → Notices */
-  const { data, loading } = useApi('/notices', { params: { category: activeCat !== 'all' ? activeCat : undefined, search: search || undefined } });
+  const { data, loading } = useApi('/notices', { 
+    params: { 
+      category: activeCat !== 'all' ? activeCat : undefined, 
+      search: search || undefined,
+      sort: searchParams.get('sort') || undefined
+    } 
+  });
   const allNotices = (data?.rows || []).map(row => mapNotice(row, isBn));
 
   const filtered = allNotices.filter(item => {
@@ -279,17 +326,20 @@ export default function Notices() {
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             {loading ? "Loading..." : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> updates found</>}
           </span>
-          {(activeCat !== 'all' || search) && (
-            <button
-              onClick={() => { setSearch(''); handleCatChange('all'); setSearchParams(new URLSearchParams()); }}
-              style={{
-                fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none',
-                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              Clear all ×
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {(activeCat !== 'all' || search) && (
+              <button
+                onClick={() => { setSearch(''); handleCatChange('all'); setSearchParams(new URLSearchParams()); }}
+                style={{
+                  fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none',
+                  border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                Clear all ×
+              </button>
+            )}
+            <SortDropdown />
+          </div>
         </div>
 
         {/* Cards Grid */}
@@ -410,12 +460,22 @@ export default function Notices() {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '1rem', fontSize: '0.7rem', color: 'var(--text-dim)' }}>
                     <FiClock size={11} style={{ color: meta.color, opacity: 0.7 }} />
-                    <span>{item.date}</span>
+                    <span>{item.date} • {item.timeAgoStr}</span>
                   </div>
 
                   {/* Call-to-action footer */}
                   <button
-                    onClick={() => window.open('#', '_blank')}
+                    onClick={() => {
+                      if (!item.link || item.link === '#') {
+                        toast.error(isBn ? 'এই নোটিশের কোনো লিংক পাওয়া যায়নি' : 'No link available for this notice');
+                        return;
+                      }
+                      let url = item.link;
+                      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        url = 'https://' + url;
+                      }
+                      window.open(url, '_blank');
+                    }}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '10px 14px', borderRadius: 12,

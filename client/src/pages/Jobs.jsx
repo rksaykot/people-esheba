@@ -9,6 +9,7 @@ import {
   FiSearch, FiUsers, FiDollarSign, FiHome, FiZap,
   FiShield, FiCheckCircle, FiGlobe
 } from 'react-icons/fi';
+import SortDropdown from '../components/ui/SortDropdown';
 
 const TYPES = ['full-time', 'part-time', 'freelance', 'internship', 'govt'];
 const TYPE_COLORS = {
@@ -54,7 +55,8 @@ export default function Jobs({ forcedType = '', forcedRemote = false, title = ''
         page, limit: 12,
         ...(typeFilter && { type: typeFilter }),
         ...(querySearch && { search: querySearch }),
-        ...(remote && { remote: 'true' })
+        ...(remote && { remote: 'true' }),
+        ...(params.get('sort') && { sort: params.get('sort') })
       });
       const { data } = await api.get(`/jobs?${q}`);
       setJobs(data.data.rows);
@@ -69,7 +71,7 @@ export default function Jobs({ forcedType = '', forcedRemote = false, title = ''
 
   useEffect(() => {
     fetchJobs();
-  }, [page, typeFilter, querySearch, remote]); // eslint-disable-line
+  }, [page, typeFilter, querySearch, remote, params.get('sort')]); // eslint-disable-line
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -279,6 +281,7 @@ export default function Jobs({ forcedType = '', forcedRemote = false, title = ''
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SortDropdown />
             {typeFilter && (
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,

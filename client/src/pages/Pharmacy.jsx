@@ -8,6 +8,7 @@ import {
   FiAward, FiCheckCircle
 } from 'react-icons/fi';
 import { MdLocalPharmacy } from 'react-icons/md';
+import SortDropdown from '../components/ui/SortDropdown';
 import { useApi } from '../hooks/useApi';
 
 /* ── Constants ──────────────────────────────────────────── */
@@ -75,7 +76,13 @@ export default function Pharmacy() {
   }, [search, typeFilter]);
 
   /* Real data — managed from Admin → Directory → Pharmacies */
-  const { data, loading } = useApi('/pharmacies', { params: { type: typeFilter || undefined, search: search || undefined } });
+  const { data, loading } = useApi('/pharmacies', { 
+    params: { 
+      type: typeFilter || undefined, 
+      search: search || undefined,
+      sort: searchParams.get('sort') || undefined
+    } 
+  });
   const pharmacies = data?.rows || [];
 
   const filtered = pharmacies.filter(item => {
@@ -276,6 +283,8 @@ export default function Pharmacy() {
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {t("pharmacy.found") || "pharmacies found"}</>}
           </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SortDropdown />
           {(typeFilter || search) && (
             <button
               onClick={() => { setSearch(''); handleTypeChange(''); }}
@@ -287,6 +296,7 @@ export default function Pharmacy() {
               {t("pharmacy.clear_filter") || "Clear all"} ×
             </button>
           )}
+          </div>
         </div>
 
         {/* Cards Grid */}

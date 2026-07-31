@@ -3,7 +3,7 @@ const { ok, err } = require('../utils/response');
 
 exports.getAll = async (req, res) => {
   try {
-    const { type, category, district, search, remote, page = 1, limit = 12 } = req.query;
+    const { type, category, district, search, remote, sort, page = 1, limit = 12 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let   where  = ["j.status = 'active'"];
     const params = [];
@@ -14,11 +14,16 @@ exports.getAll = async (req, res) => {
     if (remote === 'true') where.push('j.is_remote = 1');
     if (search)   { where.push('(j.title LIKE ? OR j.company LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
 
+    let orderClause = 'ORDER BY j.created_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY j.created_at ASC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY j.title ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY j.title DESC';
+
     const [rows] = await db.execute(
       `SELECT j.*, u.name AS poster_name, u.is_verified AS poster_verified,
        (SELECT COUNT(*) FROM job_applications a WHERE a.job_id=j.id) AS applicants
        FROM jobs j JOIN users u ON j.user_id=u.id
-       WHERE ${where.join(' AND ')} ORDER BY j.created_at DESC
+       WHERE ${where.join(' AND ')} ${orderClause}
        LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );

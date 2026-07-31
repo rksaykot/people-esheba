@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLang } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   FiBook, FiSearch, FiMapPin, FiFilter, FiExternalLink,
   FiShield, FiAward, FiClock, FiNavigation, FiChevronRight,
@@ -9,6 +10,8 @@ import {
 import {
   MdSchool, MdBusiness, MdHealthAndSafety, MdScience, MdEngineering, MdAccountBalance
 } from 'react-icons/md';
+import SortDropdown from '../components/ui/SortDropdown';
+import DetailsModal from '../components/ui/DetailsModal';
 import { useApi } from '../hooks/useApi';
 
 /* ── Constants ──────────────────────────────────────────── */
@@ -66,9 +69,11 @@ function Counter({ end, suffix = '' }) {
 export default function College() {
   const { t, isBn } = useLang();
   const { theme } = useTheme();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [visible, setVisible] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   const isDark = theme === 'dark';
 
   useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
@@ -81,7 +86,14 @@ export default function College() {
   }, [search, typeFilter]);
 
   /* Real data — managed from Admin → Education (type=college) */
-  const { data, loading } = useApi('/education', { params: { type: 'college', subtype: typeFilter || undefined, search: search || undefined } });
+  const { data, loading } = useApi('/education', { 
+    params: { 
+      type: 'college', 
+      subtype: typeFilter || undefined, 
+      search: search || undefined,
+      sort: searchParams.get('sort') || undefined
+    } 
+  });
   const colleges = (data?.rows || []).map(row => mapCollege(row, isBn));
 
   const filtered = colleges.filter(item => {
@@ -91,11 +103,7 @@ export default function College() {
   });
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = colleges.filter(item => {
-    const matchesSearch = !search || item.name.toLowerCase().includes(search.toLowerCase()) || item.area.toLowerCase().includes(search.toLowerCase());
-    const matchesType = !typeFilter || item.type === typeFilter;
-    return matchesSearch && matchesType;
-  }).slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   // Helper to get translated label, falling back to English names
   const getTypeLabel = (type) => {
@@ -292,6 +300,8 @@ export default function College() {
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {t("education.found_colleges") || "colleges found"}</>}
           </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SortDropdown />
           {(typeFilter || search) && (
             <button
               onClick={() => { setSearch(''); setTypeFilter(''); }}
@@ -303,6 +313,7 @@ export default function College() {
               {t("education.clear_filter") || "Clear all"} ×
             </button>
           )}
+          </div>
         </div>
 
         {/* Cards Grid */}
@@ -431,35 +442,14 @@ export default function College() {
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                    {item.phone && (
-                      <a href={`tel:${item.phone}`} style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        padding: '10px', borderRadius: 12, background: 'rgba(16,185,129,0.1)',
-                        color: 'var(--green)', textDecoration: 'none', fontWeight: 700, fontSize: '0.85rem',
-                        transition: 'all 0.2s'
-                      }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(16,185,129,0.2)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(16,185,129,0.1)'}>
-                        <FiClock size={14} style={{ transform: 'rotate(90deg)' }} /> Call
-                      </a>
-                    )}
-                    {item.website && (
-                      <a href={item.website.startsWith('http') ? item.website : `https://${item.website}`} target="_blank" rel="noreferrer" style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        padding: '10px', borderRadius: 12, background: `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)`,
-                        color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: '0.85rem',
-                        boxShadow: `0 4px 14px ${meta.color}30`, transition: 'all 0.2s'
-                      }}>
-                        <FiExternalLink size={14} /> Website
-                      </a>
-                    )}
-                    {!item.phone && !item.website && (
-                      <div style={{
-                        flex: 1, padding: '10px 14px', borderRadius: 12,
-                        background: 'var(--surface-3)', color: 'var(--text-dim)',
-                        fontSize: '0.8rem', fontWeight: 600, textAlign: 'center',
-                      }}>
-                        {t("education.no_details") || "Contact unavailable"}
-                      </div>
-                    )}
+                    <button onClick={() => setSelectedItem(item)} style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '10px', borderRadius: 12, background: `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)`,
+                      color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: '0.85rem',
+                      boxShadow: `0 4px 14px ${meta.color}30`, transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                    }}>
+                      <FiExternalLink size={14} /> {isBn ? 'বিস্তারিত দেখুন' : 'View Details'}
+                    </button>
                   </div>
                 </div>
               );
@@ -566,6 +556,13 @@ export default function College() {
           </div>
         </div>
       </div>
+
+      <DetailsModal 
+        isOpen={!!selectedItem} 
+        onClose={() => setSelectedItem(null)} 
+        item={selectedItem} 
+        type="education" 
+      />
 
       <style>{`
         @keyframes pulse-dot {

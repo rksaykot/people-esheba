@@ -3,7 +3,7 @@ const { ok, err } = require('../utils/response');
 
 exports.getAll = async (req, res) => {
   try {
-    const { status = 'approved', category, district, urgent, search, page = 1, limit = 12 } = req.query;
+    const { status = 'approved', category, district, urgent, search, sort, page = 1, limit = 12 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let   where  = [];
     const params = [];
@@ -15,10 +15,16 @@ exports.getAll = async (req, res) => {
     if (search)   { where.push('d.title LIKE ?');       params.push(`%${search}%`); }
 
     const cond = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    
+    let orderClause = 'ORDER BY d.is_urgent DESC, d.created_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY d.created_at ASC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY d.title ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY d.title DESC';
+
     const [rows] = await db.execute(
       `SELECT d.*, u.name AS poster_name, u.avatar AS poster_avatar, u.is_verified AS poster_verified
        FROM donations d JOIN users u ON d.user_id=u.id
-       ${cond} ORDER BY d.is_urgent DESC, d.created_at DESC
+       ${cond} ${orderClause}
        LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );

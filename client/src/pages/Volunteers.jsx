@@ -10,6 +10,7 @@ import {
   FiHeart, FiBook, FiAlertCircle, FiCoffee, FiFeather,
   FiMonitor, FiStar, FiCheckCircle, FiChevronRight, FiClock
 } from 'react-icons/fi';
+import SortDropdown from '../components/ui/SortDropdown';
 
 /* ── Constants ──────────────────────────────────────────── */
 const CATS = ['general', 'medical', 'education', 'disaster', 'food', 'environment', 'tech', 'other'];
@@ -85,12 +86,13 @@ export default function Volunteers() {
     setLoading(true);
     try {
       const q = new URLSearchParams({ page, limit:12, ...(catQuery&&{category:catQuery}), ...(searchQuery&&{search:searchQuery}) });
+      if (params.get('sort')) q.set('sort', params.get('sort'));
       const { data } = await api.get(`/volunteers?${q}`);
       setVols(data.data.rows); setTotal(data.data.total); setPages(data.data.pages);
     } catch { setVols([]); } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchVols(); }, [page, catQuery, searchQuery]); // eslint-disable-line
+  useEffect(() => { fetchVols(); }, [page, catQuery, searchQuery, params.get('sort')]); // eslint-disable-line
   useEffect(() => {
     if (isAuth) api.get('/volunteers/me').then(r=>setMyVol(r.data.data)).catch(()=>{});
   }, [isAuth]);
@@ -327,6 +329,14 @@ export default function Volunteers() {
           })}
         </div>
 
+        {/* Result meta & actions */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: 8 }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            {loading ? "Loading..." : <><strong style={{ color: 'var(--text)' }}>{total}</strong> volunteers found</>}
+          </span>
+          <SortDropdown />
+        </div>
+
         {/* Content */}
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><div className="spinner" /></div>
@@ -375,7 +385,7 @@ export default function Volunteers() {
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text)', margin: 0 }}>{v.name}</h3>
-                    {v.is_verified && <FiShield size={14} style={{ color: '#3B82F6' }} />}
+                    {!!v.is_verified && <FiShield size={14} style={{ color: '#3B82F6' }} />}
                   </div>
                   
                   {v.district && (

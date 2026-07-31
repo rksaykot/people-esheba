@@ -3,7 +3,7 @@ const { ok, err } = require('../utils/response');
 
 exports.getAll = async (req, res) => {
   try {
-    const { blood_group, district, division, available, page = 1, limit = 20 } = req.query;
+    const { blood_group, district, division, available, sort, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     // Only show approved & available donors publicly
     let   where  = ['b.is_available = 1', "COALESCE(b.status,'approved') = 'approved'"];
@@ -14,12 +14,17 @@ exports.getAll = async (req, res) => {
     if (division)    { where.push('b.division LIKE ?');    params.push(`%${division}%`); }
     if (available === 'false') where[0] = '1=1';
 
+    let orderClause = 'ORDER BY b.updated_at DESC';
+    if (sort === 'oldest') orderClause = 'ORDER BY b.updated_at ASC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY u.name ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY u.name DESC';
+
     const [rows] = await db.execute(
       `SELECT b.*, u.name, u.phone, u.avatar, u.is_verified
        FROM blood_donors b
        JOIN users u ON b.user_id = u.id
        WHERE ${where.join(' AND ')}
-       ORDER BY b.updated_at DESC
+       ${orderClause}
        LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
     );

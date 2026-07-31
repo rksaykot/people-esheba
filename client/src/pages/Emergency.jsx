@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
+import SortDropdown from '../components/ui/SortDropdown';
 import {
   FiPhone, FiMapPin, FiSearch, FiShield, FiClock,
   FiAlertTriangle, FiActivity, FiNavigation, FiChevronRight,
@@ -106,6 +107,7 @@ export default function EmergencyPage() {
         page, limit: 12,
         ...(typeFilter && { type: typeFilter }),
         ...(search && { search }),
+        ...(params.get('sort') && { sort: params.get('sort') }),
       });
       const { data } = await api.get(`/emergency?${q}`);
       if (data.data && data.data.rows) {
@@ -125,7 +127,7 @@ export default function EmergencyPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchData(); }, [page, typeFilter]); // eslint-disable-line
+  useEffect(() => { fetchData(); }, [page, typeFilter, search, params.get('sort')]); // eslint-disable-line
   const handleSearch = (e) => { e.preventDefault(); setPage(1); fetchData(); };
 
   return (
@@ -392,6 +394,8 @@ export default function EmergencyPage() {
               {loading ? t("common.loading") : <><strong style={{ color:'var(--text)' }}>{total}</strong> {t("emergency.found")}</>}
             </span>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SortDropdown />
           {typeFilter && (
             <button
               onClick={() => { setParams({}); setPage(1); }}
@@ -403,6 +407,7 @@ export default function EmergencyPage() {
               {t("emergency.clear_filter")} ×
             </button>
           )}
+          </div>
         </div>
 
         {/* Cards Grid */}
@@ -485,7 +490,7 @@ export default function EmergencyPage() {
                       <Icon size={22}/>
                     </div>
                     <div style={{ display:'flex', gap:5, flexWrap:'wrap', justifyContent:'flex-end' }}>
-                      {s.is_verified && (
+                      {!!s.is_verified && (
                         <span style={{
                           display:'inline-flex', alignItems:'center', gap:3,
                           background:'rgba(16,185,129,0.1)', color:'var(--green)',
@@ -495,7 +500,7 @@ export default function EmergencyPage() {
                           <FiShield size={9}/> Verified
                         </span>
                       )}
-                      {s.is_24h && (
+                      {!!s.is_24h && (
                         <span style={{
                           display:'inline-flex', alignItems:'center', gap:3,
                           background:'rgba(6,182,212,0.1)', color:'var(--cyan)',

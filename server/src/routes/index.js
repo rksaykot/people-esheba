@@ -79,6 +79,7 @@ router.get('/doctors/:id',  cnt.getDoctorById);
 router.get('/pharmacies',   cnt.getPharmacies);
 router.get('/notices',      cnt.getNotices);
 router.get('/education',    cnt.getEducation);
+router.get('/education/:id', cnt.getEducationById);
 router.get('/scholarships', cnt.getScholarships);
 
 // ── Directory (Hospitals, Services, Government, Finance) ──
