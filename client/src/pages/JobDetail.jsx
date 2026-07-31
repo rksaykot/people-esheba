@@ -188,7 +188,11 @@ export default function JobDetail() {
                 </div>
               </div>
 
-              {!applied ? (
+              {job.external_link ? (
+                <a href={job.external_link} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', height: 44 }}>
+                  <FiGlobe size={14} />{isBn ? 'মূল ওয়েবসাইটে আবেদন করুন' : 'Apply on Original Website'}
+                </a>
+              ) : !applied ? (
                 isAuth ? (
                   <button onClick={() => setShowForm(true)} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', height: 44 }}>
                     <FiSend size={14} />{t('jobs.apply')}
@@ -203,7 +207,7 @@ export default function JobDetail() {
                   <FiCheckCircle size={16} /> {isBn ? 'আবেদন পাঠানো হয়েছে' : 'Application Submitted'}
                 </div>
               )}
-              {job.poster_email && (
+              {!job.external_link && job.poster_email && (
                 <a href={`mailto:${job.poster_email}`} className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
                   {t('common.contact')} Employer
                 </a>

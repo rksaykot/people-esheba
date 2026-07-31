@@ -78,7 +78,7 @@ export default function GovernmentPage() {
     setLoading(true);
     try {
       const q = new URLSearchParams({
-        page, limit: 12, category: 'government',
+        page, limit: 50, category: 'government',
         ...(typeFilter && typeFilter !== 'all' && { subtype: typeFilter }),
         ...(search && { search }),
       });
@@ -86,7 +86,7 @@ export default function GovernmentPage() {
       if (data.data && data.data.rows) {
         setServices(data.data.rows);
         setTotal(data.data.total);
-        setPages(data.data.pages || Math.ceil(data.data.total / 12));
+        setPages(data.data.pages || Math.ceil(data.data.total / 50));
       } else {
         setServices([]);
         setTotal(0);
@@ -217,8 +217,8 @@ export default function GovernmentPage() {
           </div>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: '4.75rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem',
           }}>
             {IMPORTANT_LINKS.map((h, i) => {
               const Icon = h.Icon;
@@ -521,14 +521,45 @@ export default function GovernmentPage() {
         )}
 
         {pages > 1 && (
-          <div className="pagination" style={{ marginTop: '2rem' }}>
-            <button className="page-btn" onClick={() => setPage(p => p - 1)} disabled={page === 1}>‹</button>
-            {Array.from({ length: Math.min(5, pages) }, (_, i) => i + Math.max(1, page - 2))
-              .filter(p => p <= pages)
-              .map(p => (
-                <button key={p} className={`page-btn${p === page ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
-              ))}
-            <button className="page-btn" onClick={() => setPage(p => p + 1)} disabled={page === pages}>›</button>
+          <div className="flex items-center justify-center gap-2 mt-12 pb-4">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer flex items-center gap-1 bg-surface"
+              style={{
+                borderColor: 'var(--border)',
+                color: page === 1 ? 'var(--text-dim)' : 'var(--text)',
+                opacity: page === 1 ? 0.5 : 1,
+              }}
+            >
+              {isBn ? 'পূর্ববর্তী' : 'Previous'}
+            </button>
+            {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`w-9 h-9 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center`}
+                style={{
+                  background: page === p ? '#3B82F6' : 'var(--surface-2)',
+                  color: page === p ? '#fff' : 'var(--text)',
+                  border: page === p ? '1px solid #3B82F6' : '1px solid var(--border)',
+                }}
+              >
+                {isBn ? p.toLocaleString('bn-BD') : p}
+              </button>
+            ))}
+            <button
+              onClick={() => setPage(p => Math.min(pages, p + 1))}
+              disabled={page === pages}
+              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer flex items-center gap-1 bg-surface"
+              style={{
+                borderColor: 'var(--border)',
+                color: page === pages ? 'var(--text-dim)' : 'var(--text)',
+                opacity: page === pages ? 0.5 : 1,
+              }}
+            >
+              {isBn ? 'পরবর্তী' : 'Next'}
+            </button>
           </div>
         )}
       </div>

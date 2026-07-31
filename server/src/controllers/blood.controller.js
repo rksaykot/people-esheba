@@ -16,13 +16,12 @@ exports.getAll = async (req, res) => {
 
     let orderClause = 'ORDER BY b.updated_at DESC';
     if (sort === 'oldest') orderClause = 'ORDER BY b.updated_at ASC';
-    else if (sort === 'name_asc') orderClause = 'ORDER BY u.name ASC';
-    else if (sort === 'name_desc') orderClause = 'ORDER BY u.name DESC';
+    else if (sort === 'name_asc') orderClause = 'ORDER BY b.name ASC';
+    else if (sort === 'name_desc') orderClause = 'ORDER BY b.name DESC';
 
     const [rows] = await db.execute(
-      `SELECT b.*, u.name, u.phone, u.avatar, u.is_verified
+      `SELECT b.*, null as avatar, 1 as is_verified
        FROM blood_donors b
-       JOIN users u ON b.user_id = u.id
        WHERE ${where.join(' AND ')}
        ${orderClause}
        LIMIT ${parseInt(limit)} OFFSET ${offset}`,
@@ -45,13 +44,15 @@ exports.register = async (req, res) => {
     const [[existing]] = await db.execute('SELECT id FROM blood_donors WHERE user_id=?', [req.user.id]);
     if (existing) return err(res, 'Already registered as donor', 409);
 
+    const [[user]] = await db.execute('SELECT name, phone FROM users WHERE id=?', [req.user.id]);
+
     const [r] = await db.execute(
-      `INSERT INTO blood_donors (user_id, blood_group, division, district, upazila, address, emergency_contact, status)
-       VALUES (?,?,?,?,?,?,?,?)`,
-      [req.user.id, blood_group, division||null, district||null, upazila||null, address||null, emergency_contact||null, 'pending']
+      `INSERT INTO blood_donors (user_id, name, phone, blood_group, division, district, upazila, address, emergency_contact, status)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [req.user.id, user.name, user.phone, blood_group, division||null, district||null, upazila||null, address||null, emergency_contact||null, 'pending']
     );
     const [[row]] = await db.execute(
-      'SELECT b.*, u.name, u.phone FROM blood_donors b JOIN users u ON b.user_id=u.id WHERE b.id=?',
+      'SELECT b.* FROM blood_donors b WHERE b.id=?',
       [r.insertId]
     );
     ok(res, row, 'Registration submitted for admin review', 201);

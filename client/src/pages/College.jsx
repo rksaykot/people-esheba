@@ -78,7 +78,7 @@ export default function College() {
   useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 50;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -91,19 +91,15 @@ export default function College() {
       subtype: typeFilter || undefined, 
       search: search || undefined,
       district: searchParams.get('district') || undefined,
-      sort: searchParams.get('sort') || undefined
+      sort: searchParams.get('sort') || undefined,
+      page: currentPage,
+      limit: itemsPerPage
     } 
   });
   const colleges = (data?.rows || []).map(row => mapCollege(row, isBn));
 
-  const filtered = colleges.filter(item => {
-    const matchesSearch = !search || item.name.toLowerCase().includes(search.toLowerCase()) || item.area.toLowerCase().includes(search.toLowerCase());
-    const matchesType = !typeFilter || item.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
-
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = data?.pages || 0;
+  const paginated = colleges;
 
   // Helper to get translated label, falling back to English names
   const getTypeLabel = (type) => {
@@ -298,7 +294,7 @@ export default function College() {
         {/* Result meta */}
         <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {t("education.found_colleges") || "colleges found"}</>}
+            {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{data?.total || 0}</strong> {t("education.found_colleges") || "colleges found"}</>}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <DistrictDropdown />
@@ -337,7 +333,7 @@ export default function College() {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : paginated.length === 0 ? (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '5rem 2rem', gap: '1rem', textAlign: 'center',

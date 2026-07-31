@@ -249,8 +249,8 @@ export default function EmergencyPage() {
           </div>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-            gap: '4.75rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1.5rem',
           }}>
             {HOTLINES.map((h, i) => {
               const Icon = h.Icon;

@@ -124,11 +124,18 @@ app.use(errorHandler);
 // ── Automated Web Scraper (Cron Job) ──────────────────────────
 const cron = require('node-cron');
 const { runScrapers } = require('./services/scraperService');
+const { runJobScrapers } = require('./services/jobScraperService');
 
-// Schedule task to run every 12 hours (e.g., 12:00 AM, 12:00 PM)
+// Schedule task to run every 12 hours for notices
 cron.schedule('0 */12 * * *', async () => {
   console.log('[Cron] Running scheduled automated notice scrapers...');
   await runScrapers();
+});
+
+// Schedule task to run every 6 hours for jobs
+cron.schedule('0 */6 * * *', async () => {
+  console.log('[Cron] Running scheduled automated job scrapers...');
+  await runJobScrapers();
 });
 
 // Run it once immediately when the server starts in dev mode for testing (Optional)

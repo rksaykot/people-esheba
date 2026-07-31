@@ -22,18 +22,24 @@ const TYPE_META = {
   'private-hospital': { color: '#06B6D4', bg: 'rgba(6,182,212,0.1)', icon: MdMedicalServices, label: 'Private Hospital' },
 };
 
-/* Maps a directory_listings row (subtype) into the shape this page renders */
 function mapListing(row) {
   return {
     id: row.id,
     type: row.subtype,
+    category: row.category || row.subtype || 'hospital',
     name: row.name,
+    name_bn: row.name_bn || row.name,
+    description: row.description,
+    description_bn: row.description_bn || row.description,
+    address: row.address,
     area: row.area || row.district || '',
     district: row.district,
     phone: row.phone,
+    website: row.website,
     rating: Number(row.rating) || 0,
     is_verified: !!row.is_verified,
     badgeKey: row.badge_key || null,
+    price_info: row.price_info
   };
 }
 
@@ -73,9 +79,19 @@ export default function Health() {
   const [typeFilter, setTypeFilter] = useState(searchParams.get('type') || '');
   const [visible, setVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter]);
 
   useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
+  
+  // Sync state with URL if user clicks nav link while already on this page
+  useEffect(() => {
+    setTypeFilter(searchParams.get('type') || '');
+  }, [searchParams]);
   
   const handleTypeChange = (key) => {
     const newParams = new URLSearchParams(searchParams);
@@ -91,18 +107,15 @@ export default function Health() {
       ...(typeFilter && { subtype: typeFilter }),
       ...(search && { search }),
       ...(searchParams.get('district') && { district: searchParams.get('district') }),
-      ...(searchParams.get('sort') && { sort: searchParams.get('sort') })
+      ...(searchParams.get('sort') && { sort: searchParams.get('sort') }),
+      page: currentPage,
+      limit: itemsPerPage
     } 
   });
   const hospitals = (data?.rows || []).map(mapListing);
 
-  const filtered = hospitals.filter(item => {
-    const matchesSearch = !search ||
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.area.toLowerCase().includes(search.toLowerCase());
-    const matchesType = !typeFilter || item.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
+  const totalPages = data?.pages || 0;
+  const paginated = hospitals;
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
@@ -239,11 +252,6 @@ export default function Health() {
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <DistrictDropdown />
-            <SortDropdown />
-          </div>
-
           {/* Type filters */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginRight: 4 }}>
@@ -291,19 +299,24 @@ export default function Health() {
         {/* Result meta */}
         <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {t("health.found") || "hospitals found"}</>}
+            {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{data?.total || 0}</strong> {t("health.found") || "hospitals found"}</>}
           </span>
-          {(typeFilter || search || searchParams.get('district')) && (
-            <button
-              onClick={() => { setSearch(''); handleTypeChange(''); setSearchParams({}); }}
-              style={{
-                fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none',
-                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              {t("health.clear_filter") || "Clear all"} ×
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1 }}>
+            <DistrictDropdown />
+            <SortDropdown />
+            {(typeFilter || search || searchParams.get('district')) && (
+              <button
+                onClick={() => { setSearch(''); handleTypeChange(''); setSearchParams({}); }}
+                style={{
+                  fontSize: '0.78rem', color: 'var(--text-dim)', background: 'none',
+                  border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                  marginLeft: '8px'
+                }}
+              >
+                {t("health.clear_filter") || "Clear all"} ×
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Cards Grid */}
@@ -326,7 +339,7 @@ export default function Health() {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : paginated.length === 0 ? (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '5rem 2rem', gap: '1rem', textAlign: 'center',
@@ -344,7 +357,7 @@ export default function Health() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
             gap: '1rem',
           }}>
-            {filtered.map((item, i) => {
+            {paginated.map((item, i) => {
               const meta = TYPE_META[item.type] || TYPE_META['govt-hospital'];
               const Icon = meta.icon;
               return (
@@ -378,12 +391,12 @@ export default function Health() {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div style={{
-                      width: 26, height: 26, borderRadius: 10,
+                      width: 48, height: 48, borderRadius: 14,
                       background: meta.bg, border: `1px solid ${meta.color}30`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: meta.color,
                     }}>
-                      <Icon size={16} />
+                      <Icon size={22} />
                     </div>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       {item.is_verified && (
@@ -429,31 +442,78 @@ export default function Health() {
 
                   {/* Call-to-action footer */}
                   <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-                    <a
-                      href={`tel:${item.phone}`}
-                      style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        padding: '10px', borderRadius: 12, background: 'var(--surface-2)',
-                        color: 'var(--text)', textDecoration: 'none', fontWeight: 700, fontSize: '0.85rem',
-                        border: '1px solid var(--border)', transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-3)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-2)'}
-                    >
-                      <FiPhone size={14} /> Call
-                    </a>
                     <button onClick={() => setSelectedItem(item)} style={{
                       flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       padding: '10px', borderRadius: 12, background: `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)`,
                       color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: '0.85rem',
-                      boxShadow: `0 4px 14px ${meta.color}30`, transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                      boxShadow: `0 4px 14px ${meta.color}30`, transition: 'all 0.2s', border: 'none', cursor: 'pointer',
+                      whiteSpace: 'nowrap'
                     }}>
-                      {isBn ? 'বিস্তারিত দেখুন' : 'View Details'} <FiExternalLink size={14} style={{ opacity: 0.8 }} />
+                      <FiExternalLink size={14} /> {isBn ? 'বিস্তারিত দেখুন' : 'View Details'}
                     </button>
+                    {item.phone && (
+                      <a
+                        href={`tel:${item.phone}`}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: '44px', borderRadius: 12, background: 'var(--surface-2)',
+                          color: 'var(--text)', textDecoration: 'none', flexShrink: 0,
+                          border: '1px solid var(--border)', transition: 'all 0.2s'
+                        }}
+                        title="Call Hospital"
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-3)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                      >
+                        <FiPhone size={16} />
+                      </a>
+                    )}
                   </div>
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-12 pb-4">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer flex items-center gap-1 bg-surface"
+              style={{
+                borderColor: 'var(--border)',
+                color: currentPage === 1 ? 'var(--text-dim)' : 'var(--text)',
+                opacity: currentPage === 1 ? 0.5 : 1,
+              }}
+            >
+              {isBn ? 'পূর্ববর্তী' : 'Previous'}
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-9 h-9 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center`}
+                style={{
+                  background: currentPage === page ? '#3B82F6' : 'var(--surface-2)',
+                  color: currentPage === page ? '#fff' : 'var(--text)',
+                  border: currentPage === page ? '1px solid #3B82F6' : '1px solid var(--border)',
+                }}
+              >
+                {isBn ? page.toLocaleString('bn-BD') : page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer flex items-center gap-1 bg-surface"
+              style={{
+                borderColor: 'var(--border)',
+                color: currentPage === totalPages ? 'var(--text-dim)' : 'var(--text)',
+                opacity: currentPage === totalPages ? 0.5 : 1,
+              }}
+            >
+              {isBn ? 'পরবর্তী' : 'Next'}
+            </button>
           </div>
         )}
       </div>

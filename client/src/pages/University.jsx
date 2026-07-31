@@ -82,7 +82,7 @@ export default function University() {
   useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 50;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -95,21 +95,15 @@ export default function University() {
       subtype: typeFilter || undefined, 
       search: search || undefined,
       district: searchParams.get('district') || undefined,
-      sort: searchParams.get('sort') || undefined
+      sort: searchParams.get('sort') || undefined,
+      page: currentPage,
+      limit: itemsPerPage
     } 
   });
   const universities = (data?.rows || []).map(row => mapUniversity(row, isBn));
 
-  const filtered = universities.filter(u => {
-    const matchSearch = !search ||
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.area.toLowerCase().includes(search.toLowerCase());
-    const matchType = !typeFilter || u.type === typeFilter;
-    return matchSearch && matchType;
-  });
-
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = data?.pages || 0;
+  const paginated = universities;
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
@@ -250,7 +244,7 @@ export default function University() {
         {/* Results meta */}
         <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {loading ? (t('common.loading') || 'Loading...') : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {isBn ? 'টি বিশ্ববিদ্যালয় পাওয়া গেছে' : 'universities found'}</>}
+            {loading ? (t('common.loading') || 'Loading...') : <><strong style={{ color: 'var(--text)' }}>{data?.total || 0}</strong> {isBn ? 'টি বিশ্ববিদ্যালয় পাওয়া গেছে' : 'universities found'}</>}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <DistrictDropdown />
@@ -276,7 +270,7 @@ export default function University() {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : paginated.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 2rem', gap: '1rem', textAlign: 'center' }}>
             <FiFilter size={48} style={{ opacity: 0.4, color: 'var(--text-dim)' }} />
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>{isBn ? 'কোন বিশ্ববিদ্যালয় পাওয়া যায়নি' : 'No universities found'}</div>

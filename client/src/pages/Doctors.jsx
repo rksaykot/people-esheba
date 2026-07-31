@@ -69,7 +69,7 @@ export default function Doctors() {
   useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 50;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -80,22 +80,15 @@ export default function Doctors() {
     params: { 
       specialty: specialtyFilter || undefined, 
       search: search || undefined,
-      sort: searchParams.get('sort') || undefined
+      sort: searchParams.get('sort') || undefined,
+      page: currentPage,
+      limit: itemsPerPage
     } 
   });
   const doctors = data?.rows || data || [];
 
-  const filtered = doctors.filter(item => {
-    const matchesSearch = !search ||
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.area.toLowerCase().includes(search.toLowerCase()) ||
-      item.specialty.toLowerCase().includes(search.toLowerCase());
-    const matchesSpecialty = !specialtyFilter || item.specialty === specialtyFilter;
-    return matchesSearch && matchesSpecialty;
-  });
-
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = data?.pages || 0;
+  const paginated = doctors;
 
   const getSpecialtyLabel = (s) => {
     const meta = SPECIALTY_META[s];
@@ -299,7 +292,7 @@ export default function Doctors() {
         {/* Result meta */}
         <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {t("health.found_doctors") || "doctors found"}</>}
+            {loading ? t("common.loading") : <><strong style={{ color: 'var(--text)' }}>{data?.total || 0}</strong> {t("health.found_doctors") || "doctors found"}</>}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <SortDropdown />
@@ -337,7 +330,7 @@ export default function Doctors() {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : paginated.length === 0 ? (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '5rem 2rem', gap: '1rem', textAlign: 'center',

@@ -335,8 +335,12 @@ export default function Jobs({ forcedType = '', forcedRemote = false, title = ''
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            {jobs.map(job => {
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '1rem',
+          }}>
+            {jobs.map((job, i) => {
               const color = TYPE_COLORS[job.type] || 'var(--cyan)';
               return (
                 <Link
@@ -347,15 +351,18 @@ export default function Jobs({ forcedType = '', forcedRemote = false, title = ''
                   <div
                     style={{
                       background: 'var(--surface)', border: '1px solid var(--border)',
-                      borderRadius: 18, padding: '1.25rem 1.5rem',
-                      display: 'flex', alignItems: 'center', gap: '1.25rem',
-                      transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
-                      position: 'relative', overflow: 'hidden',
+                      borderRadius: 18, padding: '1.5rem', position: 'relative',
+                      overflow: 'hidden', transition: 'all 0.24s cubic-bezier(0.4,0,0.2,1)',
+                      opacity: visible ? 1 : 0,
+                      transform: visible ? 'none' : 'translateY(20px)',
+                      transitionDelay: `${Math.min(i * 50, 300)}ms`,
+                      height: '100%',
+                      display: 'flex', flexDirection: 'column'
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-3px)';
+                      e.currentTarget.style.transform = 'translateY(-4px)';
                       e.currentTarget.style.borderColor = `${color}40`;
-                      e.currentTarget.style.boxShadow = `0 12px 30px ${color}18`;
+                      e.currentTarget.style.boxShadow = `0 12px 40px ${color}18`;
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.transform = 'none';
@@ -368,71 +375,89 @@ export default function Jobs({ forcedType = '', forcedRemote = false, title = ''
                       background: `linear-gradient(90deg, ${color}, transparent)`,
                       borderRadius: '18px 18px 0 0',
                     }} />
-                    <div style={{
-                      width: 48, height: 48, borderRadius: 14,
-                      background: `${color}18`, border: `1px solid ${color}30`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: color, flexShrink: 0, fontWeight: 700, fontSize: '1.1rem',
-                    }}>
-                      {job.company?.[0]?.toUpperCase() || <FiBriefcase size={20} />}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div>
-                          <h3 style={{ fontWeight: 800, color: 'var(--text)', fontSize: '0.97rem', marginBottom: 4 }}>
-                            {(isBn && job.title_bn) ? job.title_bn : job.title}
-                          </h3>
-                          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                            {(isBn && job.company_bn) ? job.company_bn : job.company}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                      <div style={{
+                        width: 48, height: 48, borderRadius: 14,
+                        background: `${color}18`, border: `1px solid ${color}30`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: color, flexShrink: 0, fontWeight: 700, fontSize: '1.1rem',
+                      }}>
+                        {job.company?.[0]?.toUpperCase() || <FiBriefcase size={20} />}
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          background: `${color}18`, color: color,
+                          border: `1px solid ${color}30`,
+                          padding: '3px 9px', borderRadius: 999,
+                          fontSize: '0.65rem', fontWeight: 800,
+                        }}>
+                          {job.type}
+                        </span>
+                        {job.is_remote && (
                           <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            background: `${color}18`, color: color,
-                            border: `1px solid ${color}30`,
-                            padding: '2px 10px', borderRadius: 999,
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            background: 'rgba(6,182,212,0.1)', color: 'var(--cyan)',
+                            border: '1px solid rgba(6,182,212,0.2)',
+                            padding: '3px 9px', borderRadius: 999,
                             fontSize: '0.65rem', fontWeight: 800,
                           }}>
-                            {job.type}
-                          </span>
-                          {job.is_remote && (
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 3,
-                              background: 'rgba(6,182,212,0.1)', color: 'var(--cyan)',
-                              border: '1px solid rgba(6,182,212,0.2)',
-                              padding: '2px 8px', borderRadius: 999,
-                              fontSize: '0.65rem', fontWeight: 700,
-                            }}>
-                              <FiHome size={10} /> Remote
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '1rem', marginTop: 8, flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
-                        {job.district && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <FiMapPin size={11} style={{ color }} /> {job.district}
+                            <FiHome size={9} /> Remote
                           </span>
                         )}
-                        {job.salary_min && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <FiDollarSign size={11} style={{ color: 'var(--green)' }} />
-                            ৳{Number(job.salary_min).toLocaleString()}+
-                          </span>
-                        )}
-                        {job.deadline && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <FiClock size={11} style={{ color: 'var(--amber)' }} />
-                            {new Date(job.deadline).toLocaleDateString()}
-                          </span>
-                        )}
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <FiUsers size={11} /> {job.applicants || 0} {isBn ? 'আবেদন' : 'applicants'}
-                        </span>
                       </div>
                     </div>
-                    <FiArrowRight size={18} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
+
+                    <h3 style={{
+                      fontWeight: 800, color: 'var(--text)',
+                      marginBottom: '0.3rem', fontSize: '0.97rem', lineHeight: 1.35,
+                    }}>
+                      {(isBn && job.title_bn) ? job.title_bn : job.title}
+                    </h3>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '1.1rem' }}>
+                      {(isBn && job.company_bn) ? job.company_bn : job.company}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: '1.1rem', flexGrow: 1 }}>
+                      {job.district && (
+                        <span style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          <FiMapPin size={11} style={{ marginTop: 2, flexShrink: 0, color: color, opacity: 0.7 }} />
+                          {job.district}
+                        </span>
+                      )}
+                      {job.salary_min && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.76rem', color: 'var(--text-dim)' }}>
+                          <FiDollarSign size={10} style={{ color: color, opacity: 0.6 }} />
+                          ৳{Number(job.salary_min).toLocaleString()}+
+                        </span>
+                      )}
+                      {job.deadline && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.76rem', color: 'var(--text-dim)' }}>
+                          <FiClock size={10} style={{ color: color, opacity: 0.6 }} />
+                          {new Date(job.deadline).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 14px', borderRadius: 12,
+                      background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                      color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+                      boxShadow: `0 4px 14px ${color}30`,
+                      transition: 'all 0.18s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'scale(1.01)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'none'; }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        {isBn ? 'বিস্তারিত দেখুন' : 'View Details'}
+                      </span>
+                      <FiArrowRight size={15} style={{ opacity: 0.7 }} />
+                    </div>
+
                   </div>
                 </Link>
               );

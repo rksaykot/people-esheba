@@ -249,8 +249,8 @@ exports.getBloodDonors = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const [rows] = await db.execute(
-      `SELECT b.*, u.name, u.email, u.phone, u.is_verified
-       FROM blood_donors b JOIN users u ON b.user_id=u.id
+      `SELECT b.*, 1 as is_verified
+       FROM blood_donors b
        ORDER BY b.created_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`
     );
     const [[{ total }]] = await db.execute('SELECT COUNT(*) AS total FROM blood_donors');
@@ -346,7 +346,7 @@ exports.deleteBloodDonor = async (req, res) => {
   ok(res, null, 'Deleted');
 };
 exports.verifyBloodDonor = async (req, res) => {
-  await db.execute('UPDATE users u JOIN blood_donors b ON u.id=b.user_id SET u.is_verified=1 WHERE b.id=?', [req.params.id]);
+  await db.execute('UPDATE blood_donors SET status="approved" WHERE id=?', [req.params.id]);
   ok(res, null, 'Verified');
 };
 exports.approveBloodDonor = async (req, res) => {
@@ -364,12 +364,12 @@ exports.getBloodDonorsAdmin = async (req, res) => {
     let where = ['1=1'];
     const params = [];
     if (status) { where.push("COALESCE(b.status,'approved') = ?"); params.push(status); }
-    if (search) { where.push('(u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (search) { where.push('(b.name LIKE ? OR b.phone LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
     if (district) { where.push('b.district LIKE ?'); params.push(`%${district}%`); }
     const cond = where.join(' AND ');
     const [rows] = await db.execute(
-      `SELECT b.*, u.name, u.email, u.phone, u.is_verified
-       FROM blood_donors b JOIN users u ON b.user_id=u.id
+      `SELECT b.*, 1 as is_verified
+       FROM blood_donors b
        WHERE ${cond}
        ORDER BY b.created_at DESC LIMIT ${parseInt(limit)} OFFSET ${offset}`,
       params
@@ -481,7 +481,7 @@ exports.bulkImport = async (req, res) => {
     const needsCreatedBy = tablesWithCreatedBy.includes(table) && validColumns.includes('created_by');
 
     // user_id (NOT NULL) দরকার এমন টেবিল
-    const userBackedTables = ['blood_donors', 'volunteers']; // name/phone দিয়ে placeholder user তৈরি হবে
+    const userBackedTables = ['volunteers']; // volunteers still relies on user
     const jobLikeTables = ['jobs'];                           // admin নিজেই owner (user_id = admin)
 
     let successCount = 0;
