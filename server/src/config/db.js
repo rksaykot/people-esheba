@@ -4,11 +4,11 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const poolConfig = {
-  host: process.env.DB_HOST || 'people-e-sheba-people-e-sheba.c.aivencloud.com',
+  host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT) || 18004,
-  user: process.env.DB_USER || 'avnadmin',
-  password: process.env.DB_PASSWORD || 'AVNS_LXmaVTJsLwgbMwJ1gQF',
-  database: process.env.DB_NAME || 'people_e_sheba',
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   ssl: { rejectUnauthorized: false },
   waitForConnections: true,
   connectionLimit: 15,
